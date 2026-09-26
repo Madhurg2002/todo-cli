@@ -1,29 +1,4 @@
 #!/usr/bin/env node
-// import { listTasks, addTask, removeTask } from './utils/index.js';
-// const command = process.argv[2];
-// const argument = process.argv[3];
-
-// switch (command) {
-//     case 'list':
-//         listTasks();
-//         break;
-//     case 'add':
-//         if (argument) {
-//             addTask(argument);
-//         } else {
-//             console.log('Please provide a task to add.');
-//         }
-//         break;
-//     case 'remove':
-//         if (argument) {
-//             removeTask(parseInt(argument));
-//         } else {
-//             console.log('Please provide a task number to remove.');
-//         }
-//         break;
-//     default:
-//         console.log('Usage: todo [list|add|remove] [task]');
-// }
 import inquirer from 'inquirer';
 import { addTask, addTaskInteractive } from './utils/addTask.js';
 import { listTasks } from './utils/listTasks.js';
@@ -51,9 +26,9 @@ async function handleCommand(command, args) {
             break;
         case 'exit':
             console.log('Exiting...');
-            return; // Exit the program
+            process.exit(0);
         default:
-            console.log('Invalid command. Please use "add", "list", "edit", "remove", or "exit".');
+            console.log(`Unknown command: "${command}". Please use "add", "list", "edit", "remove", or "exit".`);
     }
 }
 // Main function to handle user commands
@@ -68,25 +43,31 @@ async function main() {
     // If no commands are provided, show the interactive menu
     console.log('Welcome to the Task Manager!');
 
-    const choices = [
-        { name: 'Add a task', value: 'add' },
-        { name: 'List tasks', value: 'list' },
-        { name: 'Remove a task', value: 'remove' },
-        { name: 'Update a task', value: 'update' },
-        { name: 'Exit', value: 'exit' }
-    ];
+    while (true) {
+        const choices = [
+            { name: 'Add a task', value: 'add' },
+            { name: 'List tasks', value: 'list' },
+            { name: 'Remove a task', value: 'remove' },
+            { name: 'Edit a task', value: 'edit' },
+            { name: 'Exit', value: 'exit' }
+        ];
 
-    const { action } = await inquirer.prompt([
-        {
-            type: 'list',
-            name: 'action',
-            message: 'What would you like to do?',
-            choices: choices
+        const { action } = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'action',
+                message: 'What would you like to do?',
+                choices: choices
+            }
+        ]);
+
+        if (action === 'exit') {
+            console.log('Exiting...');
+            break;
         }
-    ]);
 
-    await handleCommand(action); // Handle the selected action
-    main(); // Restart the main function for continuous interaction
+        await handleCommand(action);
+    }
 }
 
 // Start the application

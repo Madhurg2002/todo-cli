@@ -1,5 +1,4 @@
 import readline from 'readline';
-
 export function addTaskInteractive() {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -16,10 +15,6 @@ export function addTaskInteractive() {
     rl.close();
   });
 }
-
-
-import fs from 'fs';
-import path from 'path';
 import { saveTasks } from "./saveTasks.js";
 import { loadTasks } from "./loadTasks.js";
 

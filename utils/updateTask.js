@@ -6,6 +6,27 @@ import inquirer from 'inquirer';
 
 export async function updateTask(taskIndex) {
   const tasks = loadTasks();
+  if (tasks.length === 0) {
+    console.log('No tasks available to edit.');
+    return;
+  }
+
+  // No index given (e.g. from the menu): let the user pick a task first.
+  if (taskIndex === undefined) {
+    const { taskNumber } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'taskNumber',
+        message: 'Select the task to edit:',
+        choices: tasks.map((task, index) => ({
+          name: task,
+          value: index
+        }))
+      }
+    ]);
+    taskIndex = taskNumber;
+  }
+
   if (taskIndex < 0 || taskIndex >= tasks.length) {
     console.log('Invalid task index.');
     return;
