@@ -113,8 +113,9 @@ check('legacy string tasks survive a load/save cycle', () => {
 // --- corrupted file --------------------------------------------------------
 check('corrupted tasks.json errors without crashing', () => {
   fs.writeFileSync(path.join(tmp, 'tasks.json'), '{not json');
-  const { out } = run(['list']);
+  const { out, code } = run(['list'], { expectCode: 1 });
   expect(out.includes('corrupted') || out.includes('Could not'), 'no friendly error');
+  expect(code === 1, 'expected non-zero exit on corruption');
 });
 
 fs.rmSync(tmp, { recursive: true, force: true });

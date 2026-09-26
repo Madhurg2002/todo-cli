@@ -7,6 +7,7 @@ import { removeTask } from './utils/removeTask.js';
 import { updateTask } from './utils/updateTask.js';
 import { toggleTask } from './utils/toggleTask.js';
 import { showStats } from './utils/showStats.js';
+import { StoreError } from './store.js';
 
 function printHelp() {
   console.log(
@@ -135,4 +136,12 @@ async function main() {
 }
 
 // Start the application
-main();
+main().catch((err) => {
+  if (err instanceof StoreError) {
+    console.error(chalk.red(`✗  ${err.message}`));
+    console.error(chalk.gray('   Fix or delete the file; no changes were made.'));
+    process.exitCode = 1;
+    return;
+  }
+  throw err;
+});
