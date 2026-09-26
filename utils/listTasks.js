@@ -1,42 +1,28 @@
 import { loadTasks } from './loadTasks.js';
-import inquirer from 'inquirer';
-import { updateTask } from './updateTask.js'; // Import the updateTask function
+import { renderTable, chalk } from './render.js';
 
-export async function listTasks() {
+/**
+ * Print all tasks as a box-drawing table.
+ * Kept as a pure listing: no prompting, no side effects.
+ */
+export function listTasks() {
   const tasks = loadTasks();
   if (tasks.length === 0) {
-    console.log('No tasks found.');
+    console.log(
+      chalk.yellow('⚠  No tasks found. Add one with ') +
+        chalk.bold.cyan('node index.js add "task"')
+    );
     return;
   }
 
-  console.log('Tasks:');
-  tasks.forEach((task, index) => {
-    console.log(`${index + 1}: ${task}`);
-  });
-
-  // Ask if the user wants to update a task
-  const { update } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'update',
-      message: 'Would you like to update a task?',
-      default: false
-    }
+  const rows = tasks.map((task, index) => [
+    { text: String(index + 1), color: chalk.gray },
+    { text: task, color: chalk.white },
   ]);
 
-  if (update) {
-    const { taskNumber } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'taskNumber',
-        message: 'Select the task to update:',
-        choices: tasks.map((task, index) => ({
-          name: task,
-          value: index
-        }))
-      }
-    ]);
+  const taskColWidth = Math.max(30, ...tasks.map((t) => String(t).length));
 
-    await updateTask(taskNumber); // Call the updateTask function
-  }
+  console.log(
+    renderTable(`Tasks (${tasks.length})`, ['#', 'Task'], rows, [4, taskColWidth])
+  );
 }
