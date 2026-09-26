@@ -6,6 +6,7 @@ import { listTasks } from './utils/listTasks.js';
 import { removeTask } from './utils/removeTask.js';
 import { updateTask } from './utils/updateTask.js';
 import { toggleTask } from './utils/toggleTask.js';
+import { showStats } from './utils/showStats.js';
 
 function printHelp() {
   console.log(
@@ -21,6 +22,7 @@ function printHelp() {
       '  undo <n>                           reopen task n',
       '  edit                               pick a task and retype it',
       '  remove                             pick a task and delete it',
+      '  stats                              summary by status and priority',
       '  help                               show this help',
       '',
       'Run without a command for the interactive menu.',
@@ -60,6 +62,9 @@ async function handleCommand(command, args) {
             toggleTask(n - 1, command === 'done');
             break;
         }
+        case 'stats':
+            showStats();
+            break;
         case 'edit':
             await updateTask();
             break;
