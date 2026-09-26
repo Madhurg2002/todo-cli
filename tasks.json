@@ -1,4 +1,26 @@
 [
-  "alpha task",
-  "beta task"
+  {
+    "id": "bd9bf533-7770-4759-bc38-305b1f1d75f6",
+    "text": "legacy string task",
+    "status": "todo",
+    "priority": "med",
+    "createdAt": "2026-09-26T18:09:57.595Z",
+    "completedAt": null
+  },
+  {
+    "id": "dd5b287d-b90b-4e6c-8231-7a7d34a5cedc",
+    "text": "another legacy task",
+    "status": "todo",
+    "priority": "med",
+    "createdAt": "2026-09-26T18:09:57.595Z",
+    "completedAt": null
+  },
+  {
+    "id": "632ca298-c1ef-4643-b63f-8fb167ee7720",
+    "text": "new style task",
+    "status": "todo",
+    "priority": "med",
+    "createdAt": "2026-09-26T18:09:57.595Z",
+    "completedAt": null
+  }
 ]

@@ -18,7 +18,7 @@ export async function removeTask() {
             pageSize: 10,
             choices: [
                 ...tasks.map((task, index) => ({
-                    name: `${index + 1}. ${task}`,
+                    name: `${index + 1}. ${task.text}`, // task is now an object
                     value: index
                 })),
                 new inquirer.Separator(chalk.gray('─'.repeat(30))),
@@ -36,7 +36,7 @@ export async function removeTask() {
         {
             type: 'confirm',
             name: 'confirm',
-            message: `Remove "${tasks[taskNumber]}"?`,
+            message: `Remove "${tasks[taskNumber].text}"?`,
             default: false
         }
     ]);
@@ -44,7 +44,7 @@ export async function removeTask() {
     if (confirm) {
         const [removed] = tasks.splice(taskNumber, 1);
         saveTasks(tasks);
-        console.log(chalk.green('✔  Removed: ') + chalk.strikethrough.gray(`"${removed}"`));
+        console.log(chalk.green('✔  Removed: ') + chalk.strikethrough.gray(`"${removed.text}"`));
     } else {
         console.log(chalk.gray('Removal canceled.'));
     }

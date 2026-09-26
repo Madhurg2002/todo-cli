@@ -1,7 +1,7 @@
 import readline from 'readline';
 import chalk from 'chalk';
 import { saveTasks } from "./saveTasks.js";
-import { loadTasks } from "./loadTasks.js";
+import { loadTasks, PRIORITIES } from "./loadTasks.js";
 
 /**
  * Prompt for a description when `add` is called without arguments.
@@ -27,9 +27,17 @@ export function addTaskInteractive() {
   });
 }
 
-export function addTask(taskDescription) {
+export function addTask(taskDescription, priority = 'med') {
   const tasks = loadTasks();
-  tasks.push(taskDescription);
+  const task = {
+    id: crypto.randomUUID(),
+    text: taskDescription,
+    status: 'todo',
+    priority: PRIORITIES.includes(priority) ? priority : 'med',
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+  };
+  tasks.push(task);
   saveTasks(tasks);
-  console.log(chalk.green('✔  Task added: ') + chalk.bold(`"${taskDescription}"`));
+  console.log(chalk.green('✔  Task added: ') + chalk.bold(`"${task.text}"`) + chalk.gray(` (${task.priority})`));
 }

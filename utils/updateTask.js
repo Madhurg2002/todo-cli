@@ -22,7 +22,7 @@ export async function updateTask(taskIndex) {
         pageSize: 10,
         choices: [
           ...tasks.map((task, index) => ({
-            name: `${index + 1}. ${task}`,
+            name: `${index + 1}. ${task.text}`, // task is now an object
             value: index
           })),
           new inquirer.Separator(chalk.gray('─'.repeat(30))),
@@ -47,7 +47,7 @@ export async function updateTask(taskIndex) {
       type: 'input',
       name: 'newTask',
       message: 'Enter the new task description:',
-      default: tasks[taskIndex], // Pre-fill the current description
+      default: tasks[taskIndex].text, // Pre-fill the current description
     }
   ]);
 
@@ -56,12 +56,12 @@ export async function updateTask(taskIndex) {
     console.log(chalk.red('✗  Task description cannot be empty. Task unchanged.'));
     return;
   }
-  if (trimmed === tasks[taskIndex]) {
+  if (trimmed === tasks[taskIndex].text) {
     console.log(chalk.gray('Description unchanged.'));
     return;
   }
 
-  tasks[taskIndex] = trimmed;
+  tasks[taskIndex].text = trimmed;
   saveTasks(tasks);
   console.log(chalk.green('✔  Task updated: ') + chalk.bold(`"${trimmed}"`));
 }
