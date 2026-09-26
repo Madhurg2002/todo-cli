@@ -2,75 +2,80 @@
 
 A terminal task manager for Node.js. Tasks live in `tasks.json` in the working
 directory. Run `node index.js` for the interactive menu, or pass a command
-directly.
+directly. See [README.md](README.md) for full usage.
 
 ## ✅ What's done
 
-- **Core CLI (Node 22, ESM)** — command router in `index.js` with `add`, `list`,
-  `edit`, `remove`, plus an interactive inquirer menu loop.
-- **Add** — `node index.js add "task text"` for one-shot adds; falls back to an
-  interactive prompt when no text is given.
-- **List** — prints numbered tasks from `tasks.json`, offers an update flow.
-- **Edit** — select a task, retype its description (pre-filled default).
-- **Remove** — select a task from a list, confirm, delete.
-- **Persistence** — `utils/loadTasks.js` / `utils/saveTasks.js` read and write
-  `tasks.json` (pretty-printed JSON array).
-- **Windows launcher** — `todo.bat` wrapper.
-- **Dependency** — `inquirer@12` for prompts.
+### Core
+- [x] Command router in `index.js` with `add`, `list`, `done`, `undo`, `edit`,
+      `remove`, `stats`, `help` + interactive inquirer menu loop (while-loop,
+      no recursion, proper exit).
+- [x] Task model upgrade: `{ id, text, status: todo|done, priority: low|med|high,
+      createdAt, completedAt }` with graceful migration of legacy string-only
+      `tasks.json` files (upgraded on load, rewritten on next save).
+- [x] Friendly errors for corrupted / non-list `tasks.json` instead of
+      `JSON.parse` crashes; no writes when the file is unreadable.
+- [x] Correct exit codes (`1` on bad command / bad task number).
 
-## 🐛 Known issues (to fix)
+### Terminal UI
+- [x] `chalk`-powered colored output everywhere (headers, badges, hints,
+      success/warn/error feedback).
+- [x] Box-drawing table renderer (`utils/render.js`): auto column widths,
+      ANSI-safe truncation with ellipsis, per-cell coloring.
+- [x] `list` table with `#`, Task, Status (`✔ done` / `○ todo`), Priority
+      (red/yellow/gray).
+- [x] `stats` table with counts by status and priority + `█░` progress bar.
+- [x] Empty states with actionable hints (`add one with node index.js add "task"`).
+- [x] Cancellable task pickers (with separators) in edit/remove; strikethrough
+      for removed tasks.
 
-- [ ] `index.js` top half is dead commented-out code from the first version.
-- [ ] `utils/index.js` barrel imports a non-existent `common.mjs` — the barrel
-      is broken and unused.
-- [ ] Dead imports (`fs`, `path`) in `addTask.js` / `updateTask.js`.
-- [ ] Menu item "Update a task" maps to no command (`update` vs `edit`) →
-      prints "Invalid command".
-- [ ] `edit` from the menu calls `updateTask()` with no index → corrupts the
-      array (`tasks[undefined] = ...`).
-- [ ] Interactive add (`readline`) never returns to the menu loop.
-- [ ] `list` always nags with "Would you like to update a task?".
-- [ ] No error handling for a missing/corrupted `tasks.json` (JSON.parse crash).
-- [ ] Unbounded recursion in the menu loop (`main()` calls itself).
-- [ ] No `--help`, no version, no error exit codes.
-- [ ] Tasks are plain strings — no status, priority, or timestamps.
+### Commands
+- [x] `add "text" [--high|--med|--low]` — inline priority flags; falls back to
+      an interactive prompt (promise-based, menu-loop safe) when no text.
+- [x] `list` / `list --done` / `list --todo` (`--pending`) — pure listings with
+      filtered titles; filtered views renumber from 1.
+- [x] `done <n>` / `undo <n>` — completion toggling, sets/clears `completedAt`.
+- [x] `edit` — pick a task, retype description (pre-filled), rejects empty and
+      no-op edits (fixes the old `tasks[undefined]` corruption bug).
+- [x] `remove` — pick, confirm, delete.
+- [x] `stats` — summary table + progress percentage.
+- [x] `help` — command reference.
 
-## 🧱 Planned revamp
+### Packaging & docs
+- [x] `bin: { todo }` for `npm install -g .`, `engines >= 18`, npm scripts
+      (`start`, `list`, `stats`, `test`).
+- [x] README with install, usage, rendered-output examples and data format.
+- [x] Smoke tests (`npm test`) covering help, add flags, list, done/undo exit
+      codes, stats, legacy migration, corrupted-file handling — run in a
+      throwaway temp dir.
+- [x] Windows launcher (`todo.bat`) and npm lockfile committed.
 
-### 1. Cleanup pass
-- Delete dead code, fix/remove the broken barrel, drop unused imports.
-- Rewrite the menu loop as a `while` loop with proper exit.
+## 🧹 Cleaned up along the way
 
-### 2. Terminal UI revamp
-- `chalk` for colors everywhere (headers, hints, badges).
-- Box-drawing table for `list`: `#`, status badge, priority, date, task text.
-- Empty state, success/error messages, aligned columns.
+- [x] Deleted the commented-out first-version CLI block in `index.js`.
+- [x] Fixed the broken `utils/index.js` barrel (imported a non-existent
+      `common.mjs`).
+- [x] Removed unused `fs`/`path` imports and duplicate import blocks.
+- [x] Menu items now map to real commands (`Edit a task` → `edit`).
 
-### 3. Task model upgrade
-- Task objects: `{ id, text, status: todo|done, priority: low|med|high, createdAt, completedAt }`.
-- Graceful migration: old string-only `tasks.json` entries upgrade on load.
+## 🔭 Ideas / not needed yet
 
-### 4. Commands
-- `add [text] [--high|--med|--low]` — with flags, prompt otherwise.
-- `list [--all|--done|--pending]` — pure listing, no nagging prompt.
-- `done <n>` / `undo <n>` — toggle completion.
-- `edit` — select then retype.
-- `remove` — multi-select checkboxes, bulk delete.
-- `stats` — counts by status/priority.
-- `--help`, `--version`.
-
-### 5. Polish
-- `bin` + `scripts` in `package.json` so it runs as `todo`.
-- README with usage examples.
-- Smoke-test script (`npm test`-style) exercising the non-interactive paths.
-- Keep this file's status section in sync.
+- [ ] Bulk remove with checkbox multi-select.
+- [ ] `edit <n>` / `remove <n>` direct-index variants without prompts.
+- [ ] Sort options for `list` (by priority, by created date).
+- [ ] Due dates and overdue highlighting.
+- [ ] `--json` output flag for scripting.
+- [ ] Config file for default priority / storage location.
+- [ ] Archive of completed tasks instead of in-list strikethrough.
 
 ## Status
 
 | Area            | State |
 | --------------- | ----- |
-| Core commands   | partial (broken paths, see known issues) |
-| Storage         | works, plain strings |
-| Terminal UI     | plain console.log |
-| Docs            | none |
-| Tests           | none |
+| Core commands   | ✅ complete |
+| Storage         | ✅ rich objects + legacy migration |
+| Terminal UI     | ✅ chalk tables, badges, progress bar |
+| Docs            | ✅ README + roadmap |
+| Tests           | ✅ smoke suite (`npm test`) |
+
+All smoke tests passing. Run `npm test` to verify locally.
