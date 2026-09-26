@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node index.js",
     "list": "node index.js list",
-    "stats": "node index.js stats"
+    "stats": "node index.js stats",
+    "test": "node test/smoke.test.mjs"
   },
   "engines": {
     "node": ">=18"
