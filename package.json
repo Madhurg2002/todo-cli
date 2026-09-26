@@ -13,7 +13,9 @@
     "test": "node test/smoke.test.mjs",
     "server": "node server/start.js",
     "api": "node server/start.js",
-    "test:api": "node test/api.test.mjs"
+    "test:api": "node test/api.test.mjs",
+    "ssh": "node server/ssh-server.js",
+    "test:ssh": "node test/ssh.test.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -30,6 +32,7 @@
   "dependencies": {
     "chalk": "^6.0.0",
     "express": "^5.2.1",
-    "inquirer": "^12.4.2"
+    "inquirer": "^12.4.2",
+    "ssh2": "^1.17.0"
   }
 }
