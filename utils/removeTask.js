@@ -1,11 +1,12 @@
 import inquirer from 'inquirer';
+import chalk from 'chalk';
 import { saveTasks } from "./saveTasks.js";
 import { loadTasks } from "./loadTasks.js";
 
 export async function removeTask() {
     const tasks = loadTasks();
     if (tasks.length === 0) {
-        console.log('No tasks available to remove.');
+        console.log(chalk.yellow('⚠  No tasks available to remove.'));
         return;
     }
 
@@ -14,27 +15,37 @@ export async function removeTask() {
             type: 'list',
             name: 'taskNumber',
             message: 'Select the task to remove:',
-            choices: tasks.map((task, index) => ({
-                name: task,
-                value: index
-            }))
+            pageSize: 10,
+            choices: [
+                ...tasks.map((task, index) => ({
+                    name: `${index + 1}. ${task}`,
+                    value: index
+                })),
+                new inquirer.Separator(chalk.gray('─'.repeat(30))),
+                { name: chalk.gray('Cancel'), value: -1 }
+            ]
         }
     ]);
+
+    if (taskNumber === -1) {
+        console.log(chalk.gray('Removal canceled.'));
+        return;
+    }
 
     const { confirm } = await inquirer.prompt([
         {
             type: 'confirm',
             name: 'confirm',
-            message: `Are you sure you want to remove the task: "${tasks[taskNumber]}"?`,
+            message: `Remove "${tasks[taskNumber]}"?`,
             default: false
         }
     ]);
 
     if (confirm) {
-        tasks.splice(taskNumber, 1); // Remove the task
+        const [removed] = tasks.splice(taskNumber, 1);
         saveTasks(tasks);
-        console.log('Task removed successfully.');
+        console.log(chalk.green('✔  Removed: ') + chalk.strikethrough.gray(`"${removed}"`));
     } else {
-        console.log('Task removal canceled.');
+        console.log(chalk.gray('Removal canceled.'));
     }
 }

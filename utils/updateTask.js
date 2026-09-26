@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import chalk from 'chalk';
 import { saveTasks } from "./saveTasks.js";
 import { loadTasks } from "./loadTasks.js";
 import inquirer from 'inquirer';
@@ -7,7 +8,7 @@ import inquirer from 'inquirer';
 export async function updateTask(taskIndex) {
   const tasks = loadTasks();
   if (tasks.length === 0) {
-    console.log('No tasks available to edit.');
+    console.log(chalk.yellow('⚠  No tasks available to edit.'));
     return;
   }
 
@@ -18,12 +19,21 @@ export async function updateTask(taskIndex) {
         type: 'list',
         name: 'taskNumber',
         message: 'Select the task to edit:',
-        choices: tasks.map((task, index) => ({
-          name: task,
-          value: index
-        }))
+        pageSize: 10,
+        choices: [
+          ...tasks.map((task, index) => ({
+            name: `${index + 1}. ${task}`,
+            value: index
+          })),
+          new inquirer.Separator(chalk.gray('─'.repeat(30))),
+          { name: chalk.gray('Cancel'), value: -1 }
+        ]
       }
     ]);
+    if (taskNumber === -1) {
+      console.log(chalk.gray('Edit canceled.'));
+      return;
+    }
     taskIndex = taskNumber;
   }
 
@@ -37,11 +47,21 @@ export async function updateTask(taskIndex) {
       type: 'input',
       name: 'newTask',
       message: 'Enter the new task description:',
-      default: tasks[taskIndex] // Default to the current task description
+      default: tasks[taskIndex], // Pre-fill the current description
     }
   ]);
 
-  tasks[taskIndex] = newTask; // Update the task with the new description
+  const trimmed = newTask.trim();
+  if (!trimmed) {
+    console.log(chalk.red('✗  Task description cannot be empty. Task unchanged.'));
+    return;
+  }
+  if (trimmed === tasks[taskIndex]) {
+    console.log(chalk.gray('Description unchanged.'));
+    return;
+  }
+
+  tasks[taskIndex] = trimmed;
   saveTasks(tasks);
-  console.log(`Task updated: "${newTask}"`);
+  console.log(chalk.green('✔  Task updated: ') + chalk.bold(`"${trimmed}"`));
 }
