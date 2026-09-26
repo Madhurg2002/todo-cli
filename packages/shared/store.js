@@ -54,6 +54,8 @@ export function loadTasks(file = getTasksFile()) {
 }
 
 export function saveTasks(tasks, file = getTasksFile()) {
+  // Per-user stores live in .data/tasks/<id>.json, so the parent may not exist yet.
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(tasks, null, 2));
 }
 

@@ -6,7 +6,8 @@
   "exports": {
     "./store": "./store.js",
     "./render": "./render.js",
-    "./commands": "./commands.js"
+    "./commands": "./commands.js",
+    "./accounts": "./accounts.js"
   },
   "dependencies": {
     "chalk": "^6.0.0"
