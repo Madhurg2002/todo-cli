@@ -1,14 +1,17 @@
 import chalk from 'chalk';
 import { runCommand } from '@todo/shared/commands';
+import { createFileStore } from '@todo/shared/store';
+import { tasksFileFor } from '@todo/shared/accounts';
 
 /**
- * One SSH session = one TUI over the shared store. All command parsing
- * and execution lives in @todo/shared/commands so the SSH stream and
- * the web terminal behave identically.
+ * One SSH session = one TUI over the authenticated user's own task file.
+ * Command parsing/execution comes from @todo/shared/commands, so the
+ * grammar is identical to the web terminal and the CLI.
  */
-export function createSession(stream) {
+export function createSession(stream, user) {
   let lineBuffer = '';
   let closed = false;
+  const store = createFileStore({ file: tasksFileFor(user.id) });
 
   const banner = () => {
     stream.write(
@@ -18,7 +21,8 @@ export function createSession(stream) {
         chalk.bold.cyan('  ║   TODO — ssh task manager            ║'),
         chalk.bold.cyan('  ╚══════════════════════════════════════╝'),
         '',
-        chalk.gray('  commands: list · done N · undo N · rm N · add TEXT · stats · help · exit'),
+        chalk.gray(`  signed in: ${user.username}`),
+        chalk.gray('  commands: list · add TEXT · done N · undo N · rm N · edit N TEXT · stats · exit'),
         '',
       ].join('\r\n')
     );
@@ -35,7 +39,9 @@ export function createSession(stream) {
     bar: chalk.cyan,
   };
 
-  const io = {
+  const ctx = {
+    store,
+    username: user.username,
     write(cls, text) {
       if (closed) return;
       const paint = styles[cls] ?? ((s) => s);
@@ -51,16 +57,10 @@ export function createSession(stream) {
     },
   };
 
-  function handle(rawLine) {
-    const line = rawLine.trim();
-    if (!line) return;
-    runCommand(line, io);
-  }
-
   return {
     start() {
       banner();
-      runCommand('list', io);
+      runCommand('list', ctx);
       stream.write(chalk.cyanBright('\r\ntodo> '));
       stream.on('data', (chunk) => {
         lineBuffer += chunk.toString('utf8');
@@ -68,7 +68,7 @@ export function createSession(stream) {
         while ((idx = lineBuffer.indexOf('\n')) !== -1) {
           const line = lineBuffer.slice(0, idx).replace(/\r$/, '');
           lineBuffer = lineBuffer.slice(idx + 1);
-          handle(line);
+          runCommand(line.trim(), ctx);
           if (!closed && stream.writable) {
             stream.write(chalk.cyanBright('todo> '));
           }
