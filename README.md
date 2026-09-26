@@ -33,11 +33,15 @@ One grammar, many surfaces: the SSH stream and the browser terminal both
 execute through `runCommand` from `@todo/shared/commands` — only the io
 sink differs (chalk stream vs DOM spans).
 
-## Quick start
+## Quick start (fresh clone → running in ~1 minute)
+
+Requires Node 18+. No services, no accounts, no API keys — everything
+is local.
 
 ```bash
-npm install
-npm run build:web     # copy static web assets to apps/frontend/dist
+git clone <this-repo>
+cd todo-cli
+npm install           # installs deps AND builds the frontend automatically
 npm run dev:backend   # API + web on :3000, SSH on :2222
 ```
 
@@ -47,6 +51,15 @@ terminal:
 ```bash
 ssh -p 2222 localhost
 # try: add "ship it" --high   ·   list   ·   done 1   ·   stats
+```
+
+The first run creates `tasks.json` (your data) and `.ssh-host/` (a
+generated SSH host key) — both are gitignored, never committed.
+Ports are configurable with `PORT`, `SSH_PORT`, `HOST`, `TASKS_FILE`
+(see Configuration below), e.g. if 3000 is taken:
+
+```bash
+PORT=4000 npm run dev:backend
 ```
 
 ## Surfaces
@@ -146,10 +159,8 @@ format the next time a change is saved.
 ```bash
 npm run dev:backend    # API + web + SSH in one process (default ports)
 npm run dev:terminal   # interactive CLI menu
-npm test               # CLI smoke suite
-npm run test:api       # API integration tests
-npm run test:ssh       # SSH integration tests
-npm run build:web      # refresh apps/frontend/dist
+npm run verify         # run all three test suites
+npm run build:web      # refresh apps/frontend/dist (also runs on install)
 ```
 
 Workspaces: `@todo/backend`, `@todo/terminal`, `@todo/frontend`,
