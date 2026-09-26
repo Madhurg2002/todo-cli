@@ -12,7 +12,8 @@
     "stats": "node index.js stats",
     "test": "node test/smoke.test.mjs",
     "server": "node server/start.js",
-    "api": "node server/start.js"
+    "api": "node server/start.js",
+    "test:api": "node test/api.test.mjs"
   },
   "engines": {
     "node": ">=18"
