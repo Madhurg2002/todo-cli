@@ -1,24 +1,16 @@
 /**
- * Web terminal client. Talks to the same REST API the CLI and SSH
- * sessions share. Commands mirror the SSH TUI one-for-one.
+ * Web terminal client. Command parsing/execution comes from the shared
+ * grammar (@todo/shared/commands, served as a browser bundle), so the
+ * browser, SSH and CLI all speak the exact same language. This file
+ * only supplies the browser io sink and API-backed store access.
  */
+import { runCommand } from '/vendor/shared-commands.js';
+
 const output = document.getElementById('output');
 const screen = document.getElementById('screen');
 const form = document.getElementById('prompt');
 const input = document.getElementById('input');
 const conn = document.getElementById('conn');
-
-const HELP = [
-  ['head', 'Commands'],
-  ['dim', '  list                show all tasks with progress'],
-  ['dim', '  add TEXT [--high|--med|--low]   create a task'],
-  ['dim', '  done N              mark task N done'],
-  ['dim', '  undo N              reopen task N'],
-  ['dim', '  rm N                delete task N'],
-  ['dim', '  stats               counts by status and priority'],
-  ['dim', '  clear               clear the screen'],
-  ['dim', '  help                this message'],
-];
 
 function line(cls, text) {
   const el = document.createElement('span');
@@ -37,8 +29,6 @@ function html(cls, markup) {
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const pri = (p) => `<span class="pri-${p}">${'!'.repeat(p === 'high' ? 3 : p === 'med' ? 2 : 1)}</span>`;
-
 async function api(path, opts) {
   const res = await fetch(path, opts);
   const body = await res.json().catch(() => ({}));
@@ -46,92 +36,33 @@ async function api(path, opts) {
   return body;
 }
 
-async function renderTable() {
-  const { tasks } = await api('/api/tasks');
-  if (tasks.length === 0) {
-    line('warn', '⚠  No tasks yet. Try: add "my first task"');
-    return;
-  }
-  const doneCount = tasks.filter((t) => t.status === 'done').length;
-  const pct = Math.round((doneCount / tasks.length) * 100);
-  tasks.forEach((t, i) => {
-    const num = String(i + 1).padStart(2);
-    const badge = t.status === 'done' ? '✔' : '○';
-    const cls = t.status === 'done' ? 'done' : '';
-    html('', `  <span class="dim">${num}</span> ${badge} <span class="${cls}">${esc(t.text)}</span> <span class="dim">[${esc(t.priority)}]</span> ${pri(t.priority)}`);
-  });
-  html('', '');
-  const filled = Math.round(pct / 5);
-  html('', `  <span class="bar">${'█'.repeat(filled)}<span class="track">${'░'.repeat(20 - filled)}</span></span> <span class="pct">${pct}%</span> <span class="dim">(${doneCount}/${tasks.length} done)</span>`);
-}
-
-async function renderStats() {
-  const s = await api('/api/stats');
-  html('', '');
-  html('', `  <span>total</span>: ${s.total}   <span class="ok">done</span>: ${s.done}   <span class="head">todo</span>: ${s.todo}`);
-  html('', `  <span class="dim">by priority</span>   <span class="pri-high">high</span>: ${s.byPriority.high}  <span class="pri-med">med</span>: ${s.byPriority.med}  <span class="pri-low">low</span>: ${s.byPriority.low}`);
-  html('', '');
-}
-
-async function run(raw) {
-  const [cmd, ...rest] = raw.trim().split(/\s+/);
-  const arg = rest.join(' ');
-
-  switch (cmd) {
-    case 'help':
-    case '?':
-      HELP.forEach(([cls, text]) => line(cls, text));
-      return;
-    case 'clear':
-      output.innerHTML = '';
-      return;
-    case 'list':
-    case 'ls':
-      await renderTable();
-      return;
-    case 'stats':
-      await renderStats();
-      return;
-    case 'add': {
-      if (!arg) throw new Error('usage: add "task text" [--high|--med|--low]');
-      let priority = 'med';
-      const text = arg
-        .replace(/--(high|med|medium|low)\b/g, (_m, p) => { priority = p === 'medium' ? 'med' : p; return ''; })
-        .trim();
-      if (!text) throw new Error('task text cannot be empty');
-      const { task } = await api('/api/tasks', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text, priority }),
-      });
-      html('ok', `  ✔  added: <b>"${esc(task.text)}"</b> <span class="dim">(${task.priority})</span>`);
-      return;
-    }
-    case 'done':
-    case 'undo':
-    case 'rm': {
-      const n = parseInt(rest[0], 10);
-      if (Number.isNaN(n)) throw new Error(`usage: ${cmd} N`);
-      const { tasks } = await api('/api/tasks');
-      const task = tasks[n - 1];
-      if (!task) throw new Error(`no task #${n}`);
-      if (cmd === 'rm') {
-        await api(`/api/tasks/${task.id}`, { method: 'DELETE' });
-        html('ok', `  ✔  removed: <s class="dim">"${esc(task.text)}"</s>`);
-      } else {
-        const status = cmd === 'done' ? 'done' : 'todo';
-        await api(`/api/tasks/${task.id}`, {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ status }),
-        });
-        if (status === 'done') html('ok', `  ✔  completed: <s class="dim">"${esc(task.text)}"</s>`);
-        else html('head', `  ↩  reopened: <b>"${esc(task.text)}"</b>`);
+/** Browser io sink: paints shared-grammar lines into the DOM. */
+const io = {
+  write(cls, text) {
+    if (cls === 'bar') {
+      const m = text.match(/^(?<bar>\s*[█░]+)\s(?<pct>\d+)%/);
+      if (m) {
+        const { bar, pct } = m.groups;
+        const filled = (bar.match(/█/g) ?? []).length;
+        const empty = (bar.match(/░/g) ?? []).length;
+        const tail = text.slice(m.index + m[0].length);
+        html('bar', `${esc(m.groups.bar.slice(0, 2))}<span class="bar">${'█'.repeat(filled)}<span class="track">${'░'.repeat(empty)}</span></span> <span class="pct">${esc(pct)}%</span><span class="dim">${esc(tail)}</span>`);
+        return;
       }
-      return;
     }
-    default:
-      throw new Error(`unknown command "${cmd}" — try help`);
+    line(cls, text);
+  },
+  clear() {
+    output.innerHTML = '';
+  },
+  exit() {},
+};
+
+async function refresh() {
+  try {
+    await runCommand('list', io);
+  } catch (err) {
+    line('err', `  ✗  ${err.message}`);
   }
 }
 
@@ -142,7 +73,7 @@ form.addEventListener('submit', async (e) => {
   html('cmd', `<span class="ps1">todo&gt;</span> ${esc(raw)}`);
   if (!raw.trim()) return;
   try {
-    await run(raw);
+    await runCommand(raw, io);
   } catch (err) {
     line('err', `  ✗  ${err.message}`);
   }
@@ -176,11 +107,7 @@ setInterval(ping, 10000);
   line('head', '  ║   TODO — web terminal                ║');
   line('head', '  ╚══════════════════════════════════════╝');
   html('', '');
-  try {
-    await renderTable();
-  } catch (err) {
-    line('err', `  ✗  ${err.message}`);
-  }
+  await refresh();
   html('', '');
   line('dim', '  type "help" for commands.');
   html('', '');

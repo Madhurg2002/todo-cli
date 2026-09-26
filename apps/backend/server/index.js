@@ -10,11 +10,15 @@ import {
   StoreError,
   PRIORITIES,
 } from '@todo/shared/store';
+import { registerSharedBundle } from './shared-bundle.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(express.json());
+
+// Browser build of the shared command grammar for the web terminal.
+registerSharedBundle(app);
 
 /** Wrap a store operation; maps StoreError to 500 with a friendly message. */
 function withStore(handler) {
