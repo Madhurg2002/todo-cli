@@ -4,10 +4,13 @@ A task manager you can ssh into — plus a terminal-style web client and a
 classic CLI, all over one shared store.
 
 ```
-Web (browser)   →  http://localhost:3000      CRT terminal UI
+Web (browser)   →  http://localhost:3000      CRT terminal UI (sign in)
 SSH TUI         →  ssh -p 2222 localhost       live line-based session
-CLI             →  npm run dev:terminal        scripts & locals
+CLI             →  npm run dev:terminal        scripts & locals (no account)
 ```
+
+One account works everywhere: register in the browser once, then
+`ssh -p 2222 you@localhost` and you're in the same task list.
 
 ## Structure (npm workspaces)
 
@@ -24,14 +27,16 @@ apps/
     dist/      build output served by the backend
 packages/
   shared/      @todo/shared     the shared core
-    store.js     id-based task store, legacy migration, TASKS_FILE
+    store.js     task store + createFileStore adapter
     render.js    box-drawing table renderer (chalk)
-    commands.js  command grammar: parseCommand, runCommand, progressBar
+    commands.js  pure command grammar: parseCommand, runCommand
+    accounts.js  users, scrypt hashing, sessions, per-user paths
 ```
 
 One grammar, many surfaces: the SSH stream and the browser terminal both
-execute through `runCommand` from `@todo/shared/commands` — only the io
-sink differs (chalk stream vs DOM spans).
+execute through `runCommand` from `@todo/shared/commands` — they only
+differ in the io sink (chalk stream vs DOM spans) and the store adapter
+(per-user JSON file vs REST calls).
 
 ## Quick start (fresh clone → running in ~1 minute)
 
@@ -45,11 +50,11 @@ npm install           # installs deps AND builds the frontend automatically
 npm run dev:backend   # API + web on :3000, SSH on :2222
 ```
 
-Then open http://localhost:3000 in a browser, or connect from a real
-terminal:
+Then open http://localhost:3000 and create an account, or connect from
+a real terminal with the same credentials:
 
 ```bash
-ssh -p 2222 localhost
+ssh -p 2222 you@localhost
 # try: add "ship it" --high   ·   list   ·   done 1   ·   stats
 ```
 
@@ -70,9 +75,10 @@ A terminal.shop-style CRT client. Type commands (`add "task" --high`,
 the REST API below.
 
 ### 2. SSH TUI
-`ssh -p 2222 <host>` lands you in a live session backed by the same
+`ssh -p 2222 you@<host>` lands you in a live session backed by your own
 store: banner, task table with progress bar, and the same command set.
 A persistent host key is generated under `.ssh-host/` on first run.
+Authentication uses the same username/password as the web client.
 
 ### 3. CLI (`apps/terminal`)
 
@@ -88,16 +94,30 @@ node apps/terminal/index.js edit / remove             # interactive pickers
 node apps/terminal/index.js stats                     # summary
 ```
 
+## Accounts
+
+- Register/sign in from the web client; your username and password also
+  unlock the SSH TUI.
+- Passwords are hashed with scrypt (per-user salt) and compared in
+  constant time; sessions are random tokens in httpOnly cookies
+  (7-day expiry), stored in `.data/sessions.json`.
+- Every user gets an isolated task file (`.data/tasks/<userId>.json`) —
+  nothing leaks between accounts. The CLI stays account-less and local.
+
 ## HTTP API
 
 | Method | Path | Notes |
 | ------ | ---- | ----- |
-| GET | `/api/health` | liveness |
-| GET | `/api/tasks` | `?status=done&priority=high` |
-| POST | `/api/tasks` | `{ text, priority }` |
-| PATCH | `/api/tasks/:id` | `{ text?, status?, priority? }` |
-| DELETE | `/api/tasks/:id` | |
-| GET | `/api/stats` | totals + percentDone |
+| GET | `/api/health` | liveness (public) |
+| POST | `/api/auth/register` | `{ username, password }` → session |
+| POST | `/api/auth/login` | `{ username, password }` → session |
+| POST | `/api/auth/logout` | clears the session |
+| GET | `/api/auth/me` | current user (401 if signed out) |
+| GET | `/api/tasks` | `?status=done&priority=high` (session) |
+| POST | `/api/tasks` | `{ text, priority }` (session) |
+| PATCH | `/api/tasks/:id` | `{ text?, status?, priority? }` (session) |
+| DELETE | `/api/tasks/:id` | (session) |
+| GET | `/api/stats` | totals + percentDone (session) |
 
 ## Configuration
 
@@ -108,6 +128,7 @@ node apps/terminal/index.js stats                     # summary
 | `SSH_PORT` | `2222` | SSH TUI |
 | `HOST` | `0.0.0.0` | bind address |
 | `SSH_HOST_KEY_DIR` | `.ssh-host` | host key persistence |
+| `TODO_DATA_DIR` | `.data` | accounts, sessions, per-user task files |
 
 ## Screenshots (rendered output)
 
@@ -159,7 +180,7 @@ format the next time a change is saved.
 ```bash
 npm run dev:backend    # API + web + SSH in one process (default ports)
 npm run dev:terminal   # interactive CLI menu
-npm run verify         # run all three test suites
+npm run verify         # all five suites (CLI, API, SSH, accounts, web path)
 npm run build:web      # refresh apps/frontend/dist (also runs on install)
 ```
 

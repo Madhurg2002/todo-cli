@@ -7,6 +7,8 @@ apps/frontend/dist/
 # runtime user data
 tasks.json
 tasks.json.bak
+# accounts, sessions and per-user task files
+.data/
 
 # SSH host keys (generated on first backend start)
 .ssh-host/
