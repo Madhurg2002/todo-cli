@@ -1,1 +1,32 @@
-node_modules.ssh-host
+# dependencies
+node_modules/
+
+# build output (copied from apps/frontend/public by `npm run build:web`)
+apps/frontend/dist/
+
+# runtime user data
+tasks.json
+tasks.json.bak
+
+# SSH host keys (generated on first backend start)
+.ssh-host/
+apps/*/.ssh-host/
+
+# environment / secrets
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# editors
+.vscode/
+.idea/
+*.swp
