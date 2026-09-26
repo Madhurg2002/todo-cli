@@ -3,12 +3,16 @@
  * exercises the API + web + shared bundle. Meant for humans verifying a
  * fresh clone works; uses only local defaults.
  */
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 process.env.PORT = process.env.PORT || '3666';
 process.env.HOST = '127.0.0.1';
 process.env.SSH_PORT = process.env.SSH_PORT || '2388';
 
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const base = `http://127.0.0.1:${process.env.PORT}`;
-import('./apps/backend/server/all.js');
+import(path.join(root, 'apps/backend/server/all.js').replace(/\\/g, '/'));
 
 setTimeout(async () => {
   let failures = 0;
