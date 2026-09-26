@@ -1,0 +1,181 @@
+:root {
+  --bg: #0a0e0c;
+  --bg-2: #0e1411;
+  --screen: #0c120e;
+  --green: #4ade80;
+  --green-dim: #166534;
+  --cyan: #22d3ee;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --text: #d1fae5;
+  --dim: #4b6357;
+  --border: #1c2b22;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 50% -100px, #0f1a13 0%, var(--bg) 60%);
+  color: var(--text);
+  font-family: "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+/* ---------- terminal window ---------- */
+
+.crt {
+  max-width: 880px;
+  margin: 3rem auto 2rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--screen);
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 60px rgba(74, 222, 128, 0.06),
+    0 30px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.dot.red { background: #f87171aa; }
+.dot.amber { background: #fbbf24aa; }
+.dot.green { background: #4ade80aa; }
+.title { margin-left: 8px; }
+.conn { margin-left: auto; color: var(--green); }
+.conn.down { color: var(--red); }
+
+/* ---------- screen ---------- */
+
+.screen {
+  height: 420px;
+  overflow-y: auto;
+  padding: 16px 18px 4px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.25);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#prompt {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  padding-bottom: 12px;
+}
+
+.ps1 { color: var(--cyan); font-weight: 600; }
+
+#input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  caret-color: var(--green);
+}
+
+.line { display: block; }
+.line.cmd { color: var(--text); }
+.line.cmd .ps1 { color: var(--cyan); }
+.line.ok { color: var(--green); }
+.line.err { color: var(--red); }
+.line.warn { color: var(--amber); }
+.line.dim { color: var(--dim); }
+.line.head { color: var(--cyan); font-weight: 700; }
+.line.done { color: var(--dim); text-decoration: line-through; }
+
+.bar { color: var(--cyan); }
+.bar .track { color: var(--border); }
+.pct { color: var(--green); font-weight: 700; }
+.pri-high { color: var(--red); }
+.pri-med { color: var(--amber); }
+.pri-low { color: var(--dim); }
+
+.screen::-webkit-scrollbar { width: 8px; }
+.screen::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ---------- hints ---------- */
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.hints span {
+  font-size: 11.5px;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.hints span:hover { color: var(--green); border-color: var(--green-dim); }
+
+/* ---------- landing ---------- */
+
+.landing {
+  max-width: 880px;
+  margin: 0 auto 4rem;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.landing h1 {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  margin: 2.5rem 0 .5rem;
+  color: var(--text);
+}
+
+.landing h1 em { color: var(--green); font-style: normal; }
+
+.tag { color: var(--dim); margin-bottom: 2rem; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  text-align: left;
+}
+
+.cards article {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-2);
+  padding: 18px;
+  transition: transform .15s ease, border-color .15s ease;
+}
+
+.cards article:hover { transform: translateY(-2px); border-color: var(--green-dim); }
+
+.cards h3 { margin: 0 0 6px; color: var(--green); font-size: 15px; }
+.cards p { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.6; }
+
+.cta { margin-top: 2rem; color: var(--dim); font-size: 13px; }
+.cta code { color: var(--green); }
+
+@media (max-width: 640px) {
+  .crt { margin: 1rem auto; }
+  .screen { height: 340px; }
+}
