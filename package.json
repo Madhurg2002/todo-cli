@@ -3,13 +3,26 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "todo": "index.js"
   },
-  "keywords": [],
+  "scripts": {
+    "start": "node index.js",
+    "list": "node index.js list",
+    "stats": "node index.js stats"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "todo",
+    "cli",
+    "task-manager",
+    "terminal"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A terminal task manager with colored tables, priorities and done tracking",
   "dependencies": {
     "chalk": "^6.0.0",
     "inquirer": "^12.4.2"

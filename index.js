@@ -94,15 +94,19 @@ async function main() {
     }
 
     // If no commands are provided, show the interactive menu
-    console.log('Welcome to the Task Manager!');
+    console.log(chalk.bold.cyan('Welcome to the Task Manager!'));
+    console.log(chalk.gray('Tip: run "node index.js help" to see all commands.\n'));
 
     while (true) {
         const choices = [
-            { name: 'Add a task', value: 'add' },
-            { name: 'List tasks', value: 'list' },
-            { name: 'Remove a task', value: 'remove' },
-            { name: 'Edit a task', value: 'edit' },
-            { name: 'Exit', value: 'exit' }
+            new inquirer.Separator(chalk.gray('── Tasks ──')),
+            { name: `${chalk.green('+')} Add a task`, value: 'add' },
+            { name: `${chalk.cyan('☰')} List tasks`, value: 'list' },
+            { name: `${chalk.yellow('✎')} Edit a task`, value: 'edit' },
+            { name: `${chalk.red('−')} Remove a task`, value: 'remove' },
+            new inquirer.Separator(chalk.gray('── Progress ──')),
+            { name: `${chalk.magenta('Σ')} Show stats`, value: 'stats' },
+            { name: `${chalk.gray('q')} Exit`, value: 'exit' }
         ];
 
         const { action } = await inquirer.prompt([
