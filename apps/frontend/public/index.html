@@ -7,11 +7,34 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <div class="crt">
+  <!-- account gate -->
+  <div class="auth" id="auth" hidden>
+    <form class="auth-card" id="auth-form" autocomplete="off">
+      <h1>todo<span>.sh</span></h1>
+      <p class="auth-sub">sign in to your terminal</p>
+
+      <label for="auth-user">username</label>
+      <input id="auth-user" name="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+
+      <label for="auth-pass">password</label>
+      <input id="auth-pass" name="password" type="password" required />
+
+      <p class="auth-err" id="auth-err" hidden></p>
+
+      <button type="submit" id="auth-submit">sign in</button>
+      <p class="auth-alt" id="auth-alt">no account? <a href="#" id="auth-switch">create one</a></p>
+      <p class="auth-hint">same account works over ssh: <code>ssh -p 2222 you@host</code></p>
+    </form>
+  </div>
+
+  <!-- terminal -->
+  <div class="crt" id="crt" hidden>
     <header class="titlebar">
       <span class="dot red"></span><span class="dot amber"></span><span class="dot green"></span>
       <span class="title">todo.sh — ssh session</span>
+      <span class="user" id="user"></span>
       <span class="conn" id="conn">● live</span>
+      <button class="logout" id="logout" title="sign out">⏻</button>
     </header>
 
     <main class="screen" id="screen">
@@ -23,25 +46,25 @@
     </main>
 
     <footer class="hints">
-      <span>list</span><span>add "task" --high</span><span>done 1</span><span>undo 1</span><span>rm 1</span><span>stats</span><span>help</span><span>clear</span>
+      <span>list</span><span>add "task" --high</span><span>done 1</span><span>undo 1</span><span>edit 1 new text</span><span>rm 1</span><span>stats</span><span>whoami</span><span>help</span><span>clear</span>
     </footer>
   </div>
 
-  <section class="landing">
+  <section class="landing" id="landing" hidden>
     <h1>Tasks, <em>in your terminal</em>.</h1>
     <p class="tag">A task manager you ssh into. No app, no sync — just a prompt.</p>
     <div class="cards">
       <article>
-        <h3>$ ssh todo</h3>
-        <p>Every session is a live TUI over the same store the web uses. Your real terminal, our backend.</p>
+        <h3>$ ssh todo@host</h3>
+        <p>Every session is a live TUI over your own store. Your real terminal, your tasks.</p>
       </article>
       <article>
         <h3>Web = terminal</h3>
         <p>This page is a terminal too. Same commands, same keys, same green light.</p>
       </article>
       <article>
-        <h3>One store</h3>
-        <p>CLI, web and SSH all read and write one source of truth. Change it anywhere.</p>
+        <h3>One account</h3>
+        <p>Your web login and your ssh login are the same account, over the same data.</p>
       </article>
     </div>
     <p class="cta">Try <code>add "ship it" --high</code> ↑</p>
