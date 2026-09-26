@@ -17,7 +17,7 @@ function printHelp() {
       '',
       'Commands:',
       '  add ["task"] [--high|--med|--low]  add a task (prompt if no text)',
-      '  list                               show all tasks in a table',
+      '  list [--done|--todo]               show tasks (optionally filtered)',
       '  done <n>                           mark task n as done',
       '  undo <n>                           reopen task n',
       '  edit                               pick a task and retype it',
@@ -48,9 +48,16 @@ async function handleCommand(command, args) {
             }
             break;
         }
-        case 'list':
-            listTasks();
+        case 'list': {
+            const flags = (args ?? []).join(' ');
+            const filter = /--done\b/.test(flags)
+                ? 'done'
+                : /--todo\b|--pending\b/.test(flags)
+                  ? 'todo'
+                  : 'all';
+            listTasks({ filter });
             break;
+        }
         case 'done':
         case 'undo': {
             const n = parseInt(args?.[0], 10);
