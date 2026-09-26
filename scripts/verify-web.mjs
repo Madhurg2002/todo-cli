@@ -9,6 +9,9 @@ process.env.HOST = '127.0.0.1';
 process.env.SSH_PORT = process.env.SSH_PORT || '2401';
 process.env.TODO_DATA_DIR = process.env.TODO_DATA_DIR || '/tmp/verify-web';
 
+import fs from 'fs';
+fs.rmSync(process.env.TODO_DATA_DIR, { recursive: true, force: true });
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { runCommand } from '../packages/shared/commands.js';

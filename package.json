@@ -17,7 +17,11 @@
     "test": "node apps/terminal/test/smoke.test.mjs",
     "test:api": "node apps/backend/test/api.test.mjs",
     "test:ssh": "node apps/backend/test/ssh.test.mjs",
-    "verify": "npm test && npm run test:api && npm run test:ssh"
+    "verify:auth": "node scripts/verify-auth.mjs",
+    "verify:web": "node scripts/verify-web.mjs",
+    "verify:local": "node scripts/smoke-local.mjs",
+    "verify": "npm test && npm run test:api && npm run test:ssh && npm run verify:auth && npm run verify:web",
+    "verify:shared": "node scripts/verify-shared.mjs"
   },
   "engines": {
     "node": ">=18"
