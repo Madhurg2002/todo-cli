@@ -117,7 +117,21 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/tasks', requireAuth, asyncHandler(async (req, res) => {
   const { tasks } = await storeFor(req).list();
-  res.json({ tasks, count: tasks.length });
+  let visible = tasks;
+
+  const { status, priority } = req.query;
+  if (status === 'done' || status === 'todo') {
+    visible = visible.filter((t) => t.status === status);
+  }
+  if (priority) {
+    if (!PRIORITIES.includes(priority)) {
+      res.status(400).json({ error: `priority must be one of: ${PRIORITIES.join(', ')}` });
+      return;
+    }
+    visible = visible.filter((t) => t.priority === priority);
+  }
+
+  res.json({ tasks: visible, count: visible.length });
 }));
 
 app.post('/api/tasks', requireAuth, asyncHandler(async (req, res) => {
