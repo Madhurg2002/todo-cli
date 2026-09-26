@@ -10,7 +10,9 @@
     "start": "node index.js",
     "list": "node index.js list",
     "stats": "node index.js stats",
-    "test": "node test/smoke.test.mjs"
+    "test": "node test/smoke.test.mjs",
+    "server": "node server/start.js",
+    "api": "node server/start.js"
   },
   "engines": {
     "node": ">=18"
@@ -26,6 +28,7 @@
   "description": "A terminal task manager with colored tables, priorities and done tracking",
   "dependencies": {
     "chalk": "^6.0.0",
+    "express": "^5.2.1",
     "inquirer": "^12.4.2"
   }
 }
