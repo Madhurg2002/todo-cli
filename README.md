@@ -6,15 +6,39 @@ classic CLI, all over one shared store.
 ```
 Web (browser)   →  http://localhost:3000      CRT terminal UI
 SSH TUI         →  ssh -p 2222 localhost       live line-based session
-CLI             →  node index.js list          scripts & locals
+CLI             →  npm run dev:terminal        scripts & locals
 ```
+
+## Structure (npm workspaces)
+
+```
+apps/
+  backend/     @todo/backend    REST API, SSH TUI, combined entrypoint
+    server/    express app, ssh2 server, shared-grammar bundle
+    test/      api + ssh integration suites
+  terminal/    @todo/terminal   interactive CLI
+    utils/     colored tables, prompts
+    test/      CLI smoke suite
+  frontend/    @todo/frontend   web terminal client
+    public/    index.html, style.css, app.js (source)
+    dist/      build output served by the backend
+packages/
+  shared/      @todo/shared     the shared core
+    store.js     id-based task store, legacy migration, TASKS_FILE
+    render.js    box-drawing table renderer (chalk)
+    commands.js  command grammar: parseCommand, runCommand, progressBar
+```
+
+One grammar, many surfaces: the SSH stream and the browser terminal both
+execute through `runCommand` from `@todo/shared/commands` — only the io
+sink differs (chalk stream vs DOM spans).
 
 ## Quick start
 
 ```bash
 npm install
-npm run build:web     # copy static web assets to web/dist
-npm run server        # API + web on :3000, SSH on :2222
+npm run build:web     # copy static web assets to apps/frontend/dist
+npm run dev:backend   # API + web on :3000, SSH on :2222
 ```
 
 Then open http://localhost:3000 in a browser, or connect from a real
@@ -37,17 +61,18 @@ the REST API below.
 store: banner, task table with progress bar, and the same command set.
 A persistent host key is generated under `.ssh-host/` on first run.
 
-### 3. CLI
+### 3. CLI (`apps/terminal`)
 
 ```bash
-node index.js add "buy milk"            # add with default (med) priority
-node index.js add "fix bug" --high      # add with a priority
-node index.js list [--done|--todo]      # table of tasks (filterable)
-node index.js done 2                    # mark task #2 as done
-node index.js undo 2                    # reopen task #2
-node index.js edit / remove             # interactive pickers
-node index.js stats                     # summary by status + priority
-node index.js                           # interactive menu
+npm run dev:terminal                   # or: node apps/terminal/index.js
+
+node apps/terminal/index.js add "buy milk"            # default (med) priority
+node apps/terminal/index.js add "fix bug" --high      # with priority
+node apps/terminal/index.js list [--done|--todo]      # filterable table
+node apps/terminal/index.js done 2                    # mark task #2 done
+node apps/terminal/index.js undo 2                    # reopen
+node apps/terminal/index.js edit / remove             # interactive pickers
+node apps/terminal/index.js stats                     # summary
 ```
 
 ## HTTP API
@@ -119,15 +144,13 @@ format the next time a change is saved.
 ## Development
 
 ```bash
-npm start            # interactive CLI menu
-npm run server       # HTTP API + web (PORT, default 3000)
-npm run ssh          # standalone SSH TUI (SSH_PORT, default 2222)
-npm run server:all   # API + web + SSH in one process
-npm test             # CLI smoke suite
-npm run test:api     # API integration tests
-npm run test:ssh     # SSH integration tests
+npm run dev:backend    # API + web + SSH in one process (default ports)
+npm run dev:terminal   # interactive CLI menu
+npm test               # CLI smoke suite
+npm run test:api       # API integration tests
+npm run test:ssh       # SSH integration tests
+npm run build:web      # refresh apps/frontend/dist
 ```
 
-Architecture: `store.js` (shared data layer) ← `index.js` (CLI),
-`server/index.js` (API), `server/ssh.js` (SSH session),
-`web/public` (browser client). See [todo.md](todo.md) for the roadmap.
+Workspaces: `@todo/backend`, `@todo/terminal`, `@todo/frontend`,
+`@todo/shared`. See [todo.md](todo.md) for the roadmap.
