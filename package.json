@@ -7,18 +7,17 @@
   ],
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "list": "node index.js list",
-    "stats": "node index.js stats",
+    "postinstall": "node scripts/build-web.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "start": "npm run dev:backend",
+    "dev:backend": "node apps/backend/server/all.js",
+    "dev:terminal": "node apps/terminal/index.js",
+    "ssh": "node apps/backend/server/ssh-server.js",
+    "server": "node apps/backend/server/all.js",
     "test": "node apps/terminal/test/smoke.test.mjs",
     "test:api": "node apps/backend/test/api.test.mjs",
     "test:ssh": "node apps/backend/test/ssh.test.mjs",
-    "server": "npm run dev --workspace @todo/backend",
-    "server:all": "npm run dev --workspace @todo/backend",
-    "ssh": "node apps/backend/server/ssh-server.js",
-    "build:web": "cp apps/frontend/public/index.html apps/frontend/public/style.css apps/frontend/public/app.js apps/frontend/dist/",
-    "dev:backend": "node apps/backend/server/all.js",
-    "dev:terminal": "node apps/terminal/index.js"
+    "verify": "npm test && npm run test:api && npm run test:ssh"
   },
   "engines": {
     "node": ">=18"
