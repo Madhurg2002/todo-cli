@@ -24,7 +24,7 @@ const SSH_PORT = 2322;
 
 const server = spawn(
   'node',
-  [path.resolve('server/ssh-server.js')],
+  [path.resolve('apps/backend/server/ssh-server.js')],
   {
     env: {
       ...process.env,

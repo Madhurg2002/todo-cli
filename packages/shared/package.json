@@ -1,0 +1,14 @@
+{
+  "name": "@todo/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Shared task store, table renderer and command grammar",
+  "exports": {
+    "./store": "./store.js",
+    "./render": "./render.js",
+    "./commands": "./commands.js"
+  },
+  "dependencies": {
+    "chalk": "^6.0.0"
+  }
+}

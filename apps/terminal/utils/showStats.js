@@ -1,5 +1,5 @@
 import { loadTasks } from './loadTasks.js';
-import { renderTable, chalk } from './render.js';
+import { renderTable, chalk } from '@todo/shared/render';
 
 /**
  * Print a summary of task counts by status and priority.

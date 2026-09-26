@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const CLI = path.resolve('index.js');
+const CLI = path.resolve('apps/terminal/index.js');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'todo-cli-test-'));
 let failures = 0;
 

@@ -1,23 +1,24 @@
 {
-  "name": "todo-cli",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "todo-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "type": "module",
-  "bin": {
-    "todo": "index.js"
-  },
   "scripts": {
     "start": "node index.js",
     "list": "node index.js list",
     "stats": "node index.js stats",
-    "test": "node test/smoke.test.mjs",
-    "server": "node server/start.js",
-    "api": "node server/start.js",
-    "test:api": "node test/api.test.mjs",
-    "ssh": "node server/ssh-server.js",
-    "test:ssh": "node test/ssh.test.mjs",
-    "build:web": "cp web/public/index.html web/public/style.css web/public/app.js web/dist/",
-    "server:all": "node server/all.js"
+    "test": "node apps/terminal/test/smoke.test.mjs",
+    "test:api": "node apps/backend/test/api.test.mjs",
+    "test:ssh": "node apps/backend/test/ssh.test.mjs",
+    "server": "npm run dev --workspace @todo/backend",
+    "server:all": "npm run dev --workspace @todo/backend",
+    "ssh": "node apps/backend/server/ssh-server.js",
+    "build:web": "cp apps/frontend/public/index.html apps/frontend/public/style.css apps/frontend/public/app.js apps/frontend/dist/",
+    "dev:backend": "node apps/backend/server/all.js",
+    "dev:terminal": "node apps/terminal/index.js"
   },
   "engines": {
     "node": ">=18"
@@ -30,7 +31,7 @@
   ],
   "author": "",
   "license": "ISC",
-  "description": "A terminal task manager with colored tables, priorities and done tracking",
+  "description": "A task manager with web, SSH and CLI surfaces over one shared store",
   "dependencies": {
     "chalk": "^6.0.0",
     "express": "^5.2.1",

@@ -1,5 +1,5 @@
 import { loadTasks } from './loadTasks.js';
-import { renderTable, chalk } from './render.js';
+import { renderTable, chalk } from '@todo/shared/render';
 
 const PRIORITY_COLORS = {
   high: chalk.red.bold,

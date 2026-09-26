@@ -30,7 +30,7 @@ async function j(method, p, body) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
-const server = spawn('node', [path.resolve('server/start.js')], {
+const server = spawn('node', [path.resolve('apps/backend/server/start.js')], {
   env: { ...process.env, TASKS_FILE: tasksFile, PORT: '0', HOST: '127.0.0.1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });

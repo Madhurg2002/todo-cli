@@ -7,7 +7,7 @@ import { removeTask } from './utils/removeTask.js';
 import { updateTask } from './utils/updateTask.js';
 import { toggleTask } from './utils/toggleTask.js';
 import { showStats } from './utils/showStats.js';
-import { StoreError } from './store.js';
+import { StoreError } from '@todo/shared/store';
 
 function printHelp() {
   console.log(

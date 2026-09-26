@@ -9,7 +9,7 @@ import {
   removeTask,
   StoreError,
   PRIORITIES,
-} from '../store.js';
+} from '@todo/shared/store';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -165,7 +165,7 @@ app.get(
 
 // --- static frontend (if built) --------------------------------------------
 
-const webDist = path.join(__dirname, '..', 'web', 'dist');
+const webDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
 app.use(express.static(webDist));
 
 export default app;
