@@ -15,7 +15,9 @@
     "api": "node server/start.js",
     "test:api": "node test/api.test.mjs",
     "ssh": "node server/ssh-server.js",
-    "test:ssh": "node test/ssh.test.mjs"
+    "test:ssh": "node test/ssh.test.mjs",
+    "build:web": "cp web/public/index.html web/public/style.css web/public/app.js web/dist/",
+    "server:all": "node server/all.js"
   },
   "engines": {
     "node": ">=18"

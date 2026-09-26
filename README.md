@@ -1,43 +1,75 @@
-# todo-cli
+# todo.sh
 
-A terminal task manager for Node.js with colored tables, priorities and
-done tracking. Tasks are stored in `tasks.json` in the directory you run
-it from.
+A task manager you can ssh into — plus a terminal-style web client and a
+classic CLI, all over one shared store.
 
-## Install
+```
+Web (browser)   →  http://localhost:3000      CRT terminal UI
+SSH TUI         →  ssh -p 2222 localhost       live line-based session
+CLI             →  node index.js list          scripts & locals
+```
+
+## Quick start
 
 ```bash
 npm install
+npm run build:web     # copy static web assets to web/dist
+npm run server        # API + web on :3000, SSH on :2222
 ```
 
-Optional global install exposes a `todo` command:
+Then open http://localhost:3000 in a browser, or connect from a real
+terminal:
 
 ```bash
-npm install -g .
-todo list
+ssh -p 2222 localhost
+# try: add "ship it" --high   ·   list   ·   done 1   ·   stats
 ```
 
-## Usage
+## Surfaces
 
-Run with no arguments for the interactive menu:
+### 1. Web terminal (`/`)
+A terminal.shop-style CRT client. Type commands (`add "task" --high`,
+`list`, `done 1`, `stats`, `help`) into the prompt; everything talks to
+the REST API below.
 
-```bash
-node index.js
-```
+### 2. SSH TUI
+`ssh -p 2222 <host>` lands you in a live session backed by the same
+store: banner, task table with progress bar, and the same command set.
+A persistent host key is generated under `.ssh-host/` on first run.
 
-Or pass commands directly:
+### 3. CLI
 
 ```bash
 node index.js add "buy milk"            # add with default (med) priority
 node index.js add "fix bug" --high      # add with a priority
-node index.js list                      # table of all tasks
+node index.js list [--done|--todo]      # table of tasks (filterable)
 node index.js done 2                    # mark task #2 as done
 node index.js undo 2                    # reopen task #2
-node index.js edit                      # pick a task and retype it
-node index.js remove                    # pick a task and delete it
+node index.js edit / remove             # interactive pickers
 node index.js stats                     # summary by status + priority
-node index.js help                      # command reference
+node index.js                           # interactive menu
 ```
+
+## HTTP API
+
+| Method | Path | Notes |
+| ------ | ---- | ----- |
+| GET | `/api/health` | liveness |
+| GET | `/api/tasks` | `?status=done&priority=high` |
+| POST | `/api/tasks` | `{ text, priority }` |
+| PATCH | `/api/tasks/:id` | `{ text?, status?, priority? }` |
+| DELETE | `/api/tasks/:id` | |
+| GET | `/api/stats` | totals + percentDone |
+
+## Configuration
+
+| Env | Default | Used by |
+| --- | ------- | ------- |
+| `TASKS_FILE` | `./tasks.json` | store (all surfaces) |
+| `PORT` | `3000` | HTTP API + web |
+| `SSH_PORT` | `2222` | SSH TUI |
+| `HOST` | `0.0.0.0` | bind address |
+| `SSH_HOST_KEY_DIR` | `.ssh-host` | host key persistence |
 
 ## Screenshots (rendered output)
 
@@ -86,8 +118,16 @@ format the next time a change is saved.
 
 ## Development
 
-- `npm start` — launch the interactive menu
-- `npm run list` / `npm run stats` — quick non-interactive views
-- `npm test` — smoke-test the non-interactive commands
+```bash
+npm start            # interactive CLI menu
+npm run server       # HTTP API + web (PORT, default 3000)
+npm run ssh          # standalone SSH TUI (SSH_PORT, default 2222)
+npm run server:all   # API + web + SSH in one process
+npm test             # CLI smoke suite
+npm run test:api     # API integration tests
+npm run test:ssh     # SSH integration tests
+```
 
-See [todo.md](todo.md) for the roadmap and current status.
+Architecture: `store.js` (shared data layer) ← `index.js` (CLI),
+`server/index.js` (API), `server/ssh.js` (SSH session),
+`web/public` (browser client). See [todo.md](todo.md) for the roadmap.

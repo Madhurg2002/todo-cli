@@ -1,81 +1,70 @@
-# todo-cli — Roadmap & Status
+# todo-cli → todo.sh — Roadmap & Status
 
-A terminal task manager for Node.js. Tasks live in `tasks.json` in the working
-directory. Run `node index.js` for the interactive menu, or pass a command
-directly. See [README.md](README.md) for full usage.
+A task manager with three surfaces over one store:
 
-## ✅ What's done
+| Surface | Entry | Audience |
+| ------- | ----- | -------- |
+| **Web** (terminal.shop-style) | `npm run server` → `http://localhost:3000` | humans in a browser |
+| **SSH TUI** | `ssh -p 2222 localhost` | humans in a real terminal |
+| **CLI** | `node index.js list` | scripts & locals |
 
-### Core
-- [x] Command router in `index.js` with `add`, `list`, `done`, `undo`, `edit`,
-      `remove`, `stats`, `help` + interactive inquirer menu loop (while-loop,
-      no recursion, proper exit).
-- [x] Task model upgrade: `{ id, text, status: todo|done, priority: low|med|high,
-      createdAt, completedAt }` with graceful migration of legacy string-only
-      `tasks.json` files (upgraded on load, rewritten on next save).
-- [x] Friendly errors for corrupted / non-list `tasks.json` instead of
-      `JSON.parse` crashes; no writes when the file is unreadable.
-- [x] Correct exit codes (`1` on bad command / bad task number).
+All three read/write `tasks.json` through `store.js`. Location is
+overridable with `TASKS_FILE`.
 
-### Terminal UI
-- [x] `chalk`-powered colored output everywhere (headers, badges, hints,
-      success/warn/error feedback).
-- [x] Box-drawing table renderer (`utils/render.js`): auto column widths,
-      ANSI-safe truncation with ellipsis, per-cell coloring.
-- [x] `list` table with `#`, Task, Status (`✔ done` / `○ todo`), Priority
-      (red/yellow/gray).
-- [x] `stats` table with counts by status and priority + `█░` progress bar.
-- [x] Empty states with actionable hints (`add one with node index.js add "task"`).
-- [x] Cancellable task pickers (with separators) in edit/remove; strikethrough
-      for removed tasks.
+## ✅ Done
 
-### Commands
-- [x] `add "text" [--high|--med|--low]` — inline priority flags; falls back to
-      an interactive prompt (promise-based, menu-loop safe) when no text.
-- [x] `list` / `list --done` / `list --todo` (`--pending`) — pure listings with
-      filtered titles; filtered views renumber from 1.
-- [x] `done <n>` / `undo <n>` — completion toggling, sets/clears `completedAt`.
-- [x] `edit` — pick a task, retype description (pre-filled), rejects empty and
-      no-op edits (fixes the old `tasks[undefined]` corruption bug).
-- [x] `remove` — pick, confirm, delete.
-- [x] `stats` — summary table + progress percentage.
-- [x] `help` — command reference.
+### Foundation
+- [x] `store.js` — id-based tasks (`{id, text, status, priority, createdAt, completedAt}`),
+      legacy string migration, corruption-safe load, `TASKS_FILE` override.
+- [x] CLI delegates to the shared store; StoreError → friendly message + exit 1.
+- [x] Colored box-drawing tables, badges, progress bar (`utils/render.js`).
 
-### Packaging & docs
-- [x] `bin: { todo }` for `npm install -g .`, `engines >= 18`, npm scripts
-      (`start`, `list`, `stats`, `test`).
-- [x] README with install, usage, rendered-output examples and data format.
-- [x] Smoke tests (`npm test`) covering help, add flags, list, done/undo exit
-      codes, stats, legacy migration, corrupted-file handling — run in a
-      throwaway temp dir.
-- [x] Windows launcher (`todo.bat`) and npm lockfile committed.
+### Backend
+- [x] Express REST API (`server/index.js`):
+      `GET /api/health`, `GET /api/tasks` (filter `status`/`priority`),
+      `POST /api/tasks`, `PATCH /api/tasks/:id` (text/status/priority),
+      `DELETE /api/tasks/:id`, `GET /api/stats`.
+- [x] Validation → 400, missing → 404, corrupted store → 500 w/ message.
+- [x] Serves the built web client from `web/dist`.
+- [x] `PORT=0` OS-assigned ports supported (logged after bind).
 
-## 🧹 Cleaned up along the way
+### SSH
+- [x] `ssh2` server (`server/ssh-server.js`) with persistent RSA host key
+      (`.ssh-host/`, override `SSH_HOST_KEY_DIR`) for stable fingerprints.
+- [x] Line-based TUI (`server/ssh.js`): `list`, `add T --high|--med|--low`,
+      `done N`, `undo N`, `rm N`, `stats`, `help`, `exit` — progress bar
+      included, same command grammar as the web client.
 
-- [x] Deleted the commented-out first-version CLI block in `index.js`.
-- [x] Fixed the broken `utils/index.js` barrel (imported a non-existent
-      `common.mjs`).
-- [x] Removed unused `fs`/`path` imports and duplicate import blocks.
-- [x] Menu items now map to real commands (`Edit a task` → `edit`).
+### Web frontend
+- [x] CRT terminal shell (`web/public/`): titlebar w/ traffic lights +
+      live/offline health badge, blinking-prompt screen, boot banner.
+- [x] Typed commands hitting the REST API, command hint chips,
+      terminal.shop-style landing section below the fold.
+- [x] Zero build step: static files copied to `web/dist` by
+      `npm run build:web`; Express serves them.
 
-## 🔭 Ideas / not needed yet
+### Verification
+- [x] `npm test` — CLI smoke suite (10 checks).
+- [x] `npm run test:api` — 13 API checks (boots server on ephemeral port).
+- [x] `npm run test:ssh` — 10 SSH checks (real ssh2 client handshake +
+      drives every TUI command end-to-end).
 
-- [ ] Bulk remove with checkbox multi-select.
-- [ ] `edit <n>` / `remove <n>` direct-index variants without prompts.
-- [ ] Sort options for `list` (by priority, by created date).
-- [ ] Due dates and overdue highlighting.
-- [ ] `--json` output flag for scripting.
-- [ ] Config file for default priority / storage location.
-- [ ] Archive of completed tasks instead of in-list strikethrough.
+## 🔭 Next ideas
+
+- [ ] Auth: SSH public keys + web sessions; per-user task stores.
+- [ ] Server-Sent Events / WebSocket so web + SSH sessions update live.
+- [ ] SQLite (better-sqlite3) behind the same store interface.
+- [ ] Real keyboard TUI over SSH (arrow-key selection via raw mode).
+- [ ] `--json` output flag; sort options; due dates.
+- [ ] Deploy: Fly.io/VPS container running `node server/all.js`.
 
 ## Status
 
-| Area            | State |
-| --------------- | ----- |
-| Core commands   | ✅ complete |
-| Storage         | ✅ rich objects + legacy migration |
-| Terminal UI     | ✅ chalk tables, badges, progress bar |
-| Docs            | ✅ README + roadmap |
-| Tests           | ✅ smoke suite (`npm test`) |
-
-All smoke tests passing. Run `npm test` to verify locally.
+| Area | State |
+| ---- | ----- |
+| Shared store | ✅ id-based, migrated, corruption-safe |
+| REST API | ✅ full CRUD + stats, tested |
+| SSH TUI | ✅ live, tested end-to-end |
+| Web terminal | ✅ styled, API-driven |
+| CLI | ✅ unchanged UX on shared store |
+| Auth | 🔭 next |
