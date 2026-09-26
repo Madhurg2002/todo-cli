@@ -1,34 +1,82 @@
 #!/usr/bin/env node
 import inquirer from 'inquirer';
+import chalk from 'chalk';
 import { addTask, addTaskInteractive } from './utils/addTask.js';
 import { listTasks } from './utils/listTasks.js';
 import { removeTask } from './utils/removeTask.js';
 import { updateTask } from './utils/updateTask.js';
+import { toggleTask } from './utils/toggleTask.js';
+
+function printHelp() {
+  console.log(
+    [
+      chalk.bold.cyan('Task Manager'),
+      '',
+      'Usage: node index.js <command> [arguments]',
+      '',
+      'Commands:',
+      '  add ["task"] [--high|--med|--low]  add a task (prompt if no text)',
+      '  list                               show all tasks in a table',
+      '  done <n>                           mark task n as done',
+      '  undo <n>                           reopen task n',
+      '  edit                               pick a task and retype it',
+      '  remove                             pick a task and delete it',
+      '  help                               show this help',
+      '',
+      'Run without a command for the interactive menu.',
+    ].join('\n')
+  );
+}
+
 async function handleCommand(command, args) {
     switch (command) {
-        case 'add':
-            if (args) {
-                const taskDescription = args; // Join the arguments to form the task description
-                addTask(taskDescription); // Call addTask with the task description
+        case 'add': {
+            // Pull priority flags out of the free-form text arguments.
+            const raw = (args ?? []).join(' ');
+            let priority = 'med';
+            let text = raw.replace(/--(high|med|medium|low)\b/g, (_m, p) => {
+                priority = p === 'medium' ? 'med' : p;
+                return '';
+            }).trim();
+
+            if (text) {
+                addTask(text, priority);
             } else {
-                // console.log('Please provide a task description.');
-                addTaskInteractive()
+                await addTaskInteractive(priority);
             }
             break;
+        }
         case 'list':
-            await listTasks();
+            listTasks();
             break;
+        case 'done':
+        case 'undo': {
+            const n = parseInt(args?.[0], 10);
+            if (Number.isNaN(n)) {
+                console.log(chalk.red(`✗  Usage: ${command} <task number> (see "list")`));
+                process.exitCode = 1;
+                break;
+            }
+            toggleTask(n - 1, command === 'done');
+            break;
+        }
         case 'edit':
             await updateTask();
             break;
         case 'remove':
             await removeTask();
             break;
+        case 'help':
+        case '--help':
+        case '-h':
+            printHelp();
+            break;
         case 'exit':
             console.log('Exiting...');
             process.exit(0);
         default:
-            console.log(`Unknown command: "${command}". Please use "add", "list", "edit", "remove", or "exit".`);
+            console.log(chalk.red(`Unknown command: "${command}".`) + ' Run ' + chalk.bold('node index.js help') + ' for usage.');
+            process.exitCode = 1;
     }
 }
 // Main function to handle user commands
@@ -36,7 +84,7 @@ async function main() {
     const args = process.argv.slice(2); // Get command-line arguments
 
     if (args.length > 0) {
-        await handleCommand(args[0], args[1]);
+        await handleCommand(args[0], args.slice(1));
         return; // Exit after processing commands
     }
 

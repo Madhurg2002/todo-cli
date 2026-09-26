@@ -7,7 +7,7 @@ import { loadTasks, PRIORITIES } from "./loadTasks.js";
  * Prompt for a description when `add` is called without arguments.
  * Resolves so callers in the interactive menu loop keep working.
  */
-export function addTaskInteractive() {
+export function addTaskInteractive(priority = 'med') {
   return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -21,7 +21,7 @@ export function addTaskInteractive() {
         resolve();
         return;
       }
-      addTask(task.trim());
+      addTask(task.trim(), priority);
       resolve();
     });
   });
