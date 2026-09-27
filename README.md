@@ -205,7 +205,13 @@ present.
 | `RATE_LIMIT` | on | `off` disables rate limiting (tests, trusted LAN) |
 | `TODO_JSON` | — | `1` makes the CLI default to `--json` |
 
-## Hosting it: TLS in front of HTTP
+## Hosting it
+
+Full deployment guide: [DEPLOY.md](DEPLOY.md) — one-click Render blueprint
+(`render.yaml`, disk-backed, ~$7/mo), the $0 free-tier path, and the
+VPS/Docker setup that also hosts the SSH TUI.
+
+### TLS in front of HTTP
 
 The server speaks plain HTTP; put TLS in front of it on a VPS. Two options:
 

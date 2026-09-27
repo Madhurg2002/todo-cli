@@ -1,0 +1,37 @@
+# Render blueprint for todo.sh — deploys the web app + REST API with a
+# persistent disk for the file-backed store (accounts, sessions, tasks).
+#
+# Use it from the Render dashboard: New + Blueprint, point it at this
+# repository, and every field below is pre-filled.
+#
+# Notes:
+# - The disk requires a paid instance (starter). On the free tier there is
+#   no disk, so accounts/tasks would vanish on every spin-down — see
+#   DEPLOY.md for the free-path requirements (Postgres-backed accounts).
+# - The SSH TUI cannot be hosted on Render (no raw TCP ingress). The start
+#   command runs apps/backend/server/start.js: HTTP + API + static web only.
+# - Set PUBLIC_URL when prompted (Render asks for `sync: false` vars).
+#   It is display-only and can be the final *.onrender.com URL.
+
+services:
+  - type: web
+    name: todo-sh
+    runtime: node
+    plan: starter
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: node apps/backend/server/start.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TODO_DATA_DIR
+        value: /var/data
+      - key: TRUST_PROXY
+        value: "1" # Render terminates TLS; makes session cookies Secure
+      - key: PUBLIC_URL
+        sync: false # fill with https://<your-service>.onrender.com
+    disk:
+      name: todo-data
+      mountPath: /var/data
+      sizeGB: 1
