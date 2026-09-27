@@ -7,8 +7,28 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <!-- account gate -->
+  <!-- landing / account gate -->
   <div class="auth" id="auth" hidden>
+    <section class="hero" id="hero">
+      <h1>Tasks, <em>in your terminal</em>.</h1>
+      <p class="tag">A task manager you can reach from a browser, an SSH session or a plain CLI. One account, one list, everywhere — now with due dates, tags and a real board view.</p>
+      <div class="cards">
+        <article>
+          <h3>Board or terminal</h3>
+          <p>The web app is a dual view: click through a real board, or flip into the CRT and type. Both stay in sync live.</p>
+        </article>
+        <article>
+          <h3>$ ssh todo@host</h3>
+          <p>Every SSH session is a live TUI over your own tasks. Same grammar, same data, your real terminal.</p>
+        </article>
+        <article>
+          <h3>One grammar everywhere</h3>
+          <p>add "ship" --due fri --tag dev works identically in the browser, over SSH and in the CLI.</p>
+        </article>
+      </div>
+      <p class="cta">Sign in to try it →</p>
+    </section>
+
     <form class="auth-card" id="auth-form" autocomplete="off">
       <h1>todo<span>.sh</span></h1>
       <p class="auth-sub">sign in to your terminal</p>
@@ -17,7 +37,7 @@
       <input id="auth-user" name="username" autocapitalize="off" autocorrect="off" spellcheck="false" required />
 
       <label for="auth-pass">password</label>
-      <input id="auth-pass" name="password" type="password" required />
+      <input id="auth-pass" name="password" type="password" minlength="8" required />
 
       <p class="auth-err" id="auth-err" hidden></p>
 
@@ -27,48 +47,94 @@
     </form>
   </div>
 
-  <!-- terminal -->
-  <div class="crt" id="crt" hidden>
-    <header class="titlebar">
-      <span class="dot red"></span><span class="dot amber"></span><span class="dot green"></span>
-      <span class="title">todo.sh — ssh session</span>
+  <!-- app shell: view toggle + board + terminal -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <span class="brand">todo<span class="brand-dim">.sh</span></span>
+      <nav class="view-toggle" role="tablist">
+        <button class="view-btn" data-view="board" title="board view">▦ board</button>
+        <button class="view-btn" data-view="terminal" title="terminal view">▶_ terminal</button>
+      </nav>
       <span class="user" id="user"></span>
       <span class="conn" id="conn">● live</span>
-      <button class="logout" id="logout" title="sign out">⏻</button>
+      <button class="tb-btn" id="settings-btn" title="settings">⚙</button>
+      <button class="tb-btn" id="logout" title="sign out">⏻</button>
     </header>
 
-    <main class="screen" id="screen">
-      <div id="output"></div>
-      <form id="prompt" autocomplete="off">
-        <span class="ps1">todo&gt;&nbsp;</span>
-        <input id="input" name="input" spellcheck="false" autofocus />
+    <!-- board view -->
+    <main class="board" id="board" hidden>
+      <form class="add-bar" id="add-form" autocomplete="off">
+        <input id="quick-text" placeholder='add a task…  e.g. "ship v1.2"' required />
+        <select id="quick-pri" title="priority">
+          <option value="low">low</option>
+          <option value="med" selected>med</option>
+          <option value="high">high</option>
+        </select>
+        <input type="date" id="quick-due" title="due date" />
+        <input id="quick-tags" placeholder="tags, comma-sep" class="tags-input" />
+        <button type="submit" class="add-btn">add</button>
       </form>
+      <p class="add-err" id="add-err" hidden></p>
+
+      <div class="board-meta">
+        <div class="chips" id="filter-chips"></div>
+        <div class="stats-strip" id="stats-strip"></div>
+      </div>
+
+      <ul class="task-list" id="task-list"></ul>
     </main>
 
-    <footer class="hints">
-      <span>list</span><span>add "task" --high</span><span>done 1</span><span>undo 1</span><span>edit 1 new text</span><span>rm 1</span><span>stats</span><span>whoami</span><span>help</span><span>clear</span>
-    </footer>
+    <!-- terminal view -->
+    <div class="crt" id="crt" hidden>
+      <main class="screen" id="screen">
+        <div id="output"></div>
+        <form id="prompt" autocomplete="off">
+          <span class="ps1">todo&gt;&nbsp;</span>
+          <input id="input" name="input" spellcheck="false" />
+        </form>
+      </main>
+
+      <footer class="hints">
+        <span>list</span><span>add "task" --high --due fri --tag dev</span><span>list +dev</span><span>list overdue</span><span>due 1 tomorrow</span><span>tag 1 home</span><span>done 1</span><span>stats</span><span>help</span><span>clear</span>
+      </footer>
+    </div>
   </div>
 
-  <section class="landing" id="landing" hidden>
-    <h1>Tasks, <em>in your terminal</em>.</h1>
-    <p class="tag">A task manager you ssh into. No app, no sync — just a prompt.</p>
-    <div class="cards">
-      <article>
-        <h3>$ ssh todo@host</h3>
-        <p>Every session is a live TUI over your own store. Your real terminal, your tasks.</p>
-      </article>
-      <article>
-        <h3>Web = terminal</h3>
-        <p>This page is a terminal too. Same commands, same keys, same green light.</p>
-      </article>
-      <article>
-        <h3>One account</h3>
-        <p>Your web login and your ssh login are the same account, over the same data.</p>
-      </article>
+  <!-- settings -->
+  <div class="settings" id="settings" hidden>
+    <div class="settings-card">
+      <header>
+        <h2>settings</h2>
+        <button class="tb-btn" id="settings-close" title="close">✕</button>
+      </header>
+
+      <section>
+        <h3>change password</h3>
+        <form id="pw-form">
+          <input id="pw-current" type="password" placeholder="current password" required />
+          <input id="pw-new" type="password" placeholder="new password (8+ chars)" minlength="8" required />
+          <button type="submit">update password</button>
+          <p class="form-msg" id="pw-msg"></p>
+        </form>
+        <p class="form-note">Changing your password signs out every other device.</p>
+      </section>
+
+      <section>
+        <h3>active sessions</h3>
+        <ul class="sessions" id="sessions"></ul>
+      </section>
+
+      <section class="danger">
+        <h3>danger zone</h3>
+        <p>Deleting your account removes your tasks permanently. Every session is signed out.</p>
+        <form id="del-form">
+          <input id="del-pass" type="password" placeholder="confirm with your password" required />
+          <button type="submit" class="danger-btn">delete my account</button>
+          <p class="form-msg" id="del-msg"></p>
+        </form>
+      </section>
     </div>
-    <p class="cta">Try <code>add "ship it" --high</code> ↑</p>
-  </section>
+  </div>
 
   <script type="module" src="/app.js"></script>
 </body>

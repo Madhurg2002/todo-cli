@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Shared core (locks, filters, accounts)
+        run: npm run test:shared
+
+      - name: CLI smoke
+        run: npm test
+
+      - name: API + accounts integration
+        run: npm run test:api
+
+      - name: SSH integration
+        run: npm run test:ssh
+
+      - name: Accounts flow check
+        run: npm run verify:auth
+
+      - name: Web path check
+        run: npm run verify:web

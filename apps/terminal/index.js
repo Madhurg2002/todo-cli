@@ -1,147 +1,113 @@
 #!/usr/bin/env node
-import inquirer from 'inquirer';
-import chalk from 'chalk';
-import { addTask, addTaskInteractive } from './utils/addTask.js';
-import { listTasks } from './utils/listTasks.js';
-import { removeTask } from './utils/removeTask.js';
-import { updateTask } from './utils/updateTask.js';
-import { toggleTask } from './utils/toggleTask.js';
-import { showStats } from './utils/showStats.js';
-import { StoreError } from '@todo/shared/store';
+/**
+ * todo CLI.
+ *
+ * Every command is parsed by @todo/shared/commands (parseCommand via
+ * runCommand) and executed against the same shared store the server
+ * uses — identical grammar to the web terminal and the SSH TUI.
+ *
+ * Usage:
+ *   todo add "task" [--high|--med|--low]
+ *   todo list
+ *   todo done N | undo N | rm N
+ *   todo edit N "new text"
+ *   todo stats | whoami | help
+ *
+ * Output is human by default; --json (or TODO_JSON=1) prints
+ * machine-readable JSON for scripts and status bars:
+ *   { "ok": bool, "lines": [{ "cls": "ok", "text": "..." }, ...] }
+ */
+import { runCommand } from '@todo/shared/commands';
+import { createFileStore, StoreError } from '@todo/shared/store';
+
+const asJson = process.argv.includes('--json') || process.env.TODO_JSON === '1';
+const args = process.argv.slice(2).filter((a) => a !== '--json');
+
+const styles = {
+  ok: (s) => `\x1b[32m${s}\x1b[0m`,
+  err: (s) => `\x1b[31m${s}\x1b[0m`,
+  warn: (s) => `\x1b[33m${s}\x1b[0m`,
+  head: (s) => `\x1b[36m\x1b[1m${s}\x1b[0m`,
+  dim: (s) => `\x1b[2m${s}\x1b[0m`,
+  done: (s) => `\x1b[2m\x1b[9m${s}\x1b[0m`,
+  bar: (s) => `\x1b[36m${s}\x1b[0m`,
+};
+
+function printLines(lines) {
+  for (const { cls, text } of lines) {
+    const paint = styles[cls] ?? ((s) => s);
+    console.log(paint(text));
+  }
+}
+
+function exitCodeFor(lines) {
+  return lines.some((l) => l.cls === 'err') ? 1 : 0;
+}
 
 function printHelp() {
   console.log(
     [
-      chalk.bold.cyan('Task Manager'),
+      'todo — a task manager in your terminal',
       '',
-      'Usage: node index.js <command> [arguments]',
+      'usage: todo <command> [args] [--json]',
       '',
-      'Commands:',
-      '  add ["task"] [--high|--med|--low]  add a task (prompt if no text)',
-      '  list [--done|--todo]               show tasks (optionally filtered)',
-      '  done <n>                           mark task n as done',
-      '  undo <n>                           reopen task n',
-      '  edit                               pick a task and retype it',
-      '  remove                             pick a task and delete it',
-      '  stats                              summary by status and priority',
-      '  help                               show this help',
+      'commands:',
+      '  add "task" [--high|--med|--low] [--due DATE] [--tag a,b]',
+      '  list [todo|done|--high|--med|--low|+tag|overdue]',
+      '  done N | undo N | rm N           complete / reopen / delete',
+      '  edit N "new text"                retype task N',
+      '  due N DATE                       set due (today, tomorrow, fri,',
+      '                                   2026-10-01 — or: due N clear)',
+      '  tag N a,b | untag N a            add / remove tags',
+      '  stats                            counts by status and priority',
+      '  whoami                           shows the local (account-less) identity',
+      '  help                             this message',
       '',
-      'Run without a command for the interactive menu.',
+      'add --json (or set TODO_JSON=1) for machine-readable output.',
+      'The CLI works fully offline: no account, no server required.',
     ].join('\n')
   );
 }
 
-async function handleCommand(command, args) {
-    switch (command) {
-        case 'add': {
-            // Pull priority flags out of the free-form text arguments.
-            const raw = (args ?? []).join(' ');
-            let priority = 'med';
-            let text = raw.replace(/--(high|med|medium|low)\b/g, (_m, p) => {
-                priority = p === 'medium' ? 'med' : p;
-                return '';
-            }).trim();
-
-            if (text) {
-                addTask(text, priority);
-            } else {
-                await addTaskInteractive(priority);
-            }
-            break;
-        }
-        case 'list': {
-            const flags = (args ?? []).join(' ');
-            const filter = /--done\b/.test(flags)
-                ? 'done'
-                : /--todo\b|--pending\b/.test(flags)
-                  ? 'todo'
-                  : 'all';
-            listTasks({ filter });
-            break;
-        }
-        case 'done':
-        case 'undo': {
-            const n = parseInt(args?.[0], 10);
-            if (Number.isNaN(n)) {
-                console.log(chalk.red(`✗  Usage: ${command} <task number> (see "list")`));
-                process.exitCode = 1;
-                break;
-            }
-            toggleTask(n - 1, command === 'done');
-            break;
-        }
-        case 'stats':
-            showStats();
-            break;
-        case 'edit':
-            await updateTask();
-            break;
-        case 'remove':
-            await removeTask();
-            break;
-        case 'help':
-        case '--help':
-        case '-h':
-            printHelp();
-            break;
-        case 'exit':
-            console.log('Exiting...');
-            process.exit(0);
-        default:
-            console.log(chalk.red(`Unknown command: "${command}".`) + ' Run ' + chalk.bold('node index.js help') + ' for usage.');
-            process.exitCode = 1;
-    }
-}
-// Main function to handle user commands
 async function main() {
-    const args = process.argv.slice(2); // Get command-line arguments
+  const raw = args.join(' ').trim();
 
-    if (args.length > 0) {
-        await handleCommand(args[0], args.slice(1));
-        return; // Exit after processing commands
-    }
-
-    // If no commands are provided, show the interactive menu
-    console.log(chalk.bold.cyan('Welcome to the Task Manager!'));
-    console.log(chalk.gray('Tip: run "node index.js help" to see all commands.\n'));
-
-    while (true) {
-        const choices = [
-            new inquirer.Separator(chalk.gray('── Tasks ──')),
-            { name: `${chalk.green('+')} Add a task`, value: 'add' },
-            { name: `${chalk.cyan('☰')} List tasks`, value: 'list' },
-            { name: `${chalk.yellow('✎')} Edit a task`, value: 'edit' },
-            { name: `${chalk.red('−')} Remove a task`, value: 'remove' },
-            new inquirer.Separator(chalk.gray('── Progress ──')),
-            { name: `${chalk.magenta('Σ')} Show stats`, value: 'stats' },
-            { name: `${chalk.gray('q')} Exit`, value: 'exit' }
-        ];
-
-        const { action } = await inquirer.prompt([
-            {
-                type: 'list',
-                name: 'action',
-                message: 'What would you like to do?',
-                choices: choices
-            }
-        ]);
-
-        if (action === 'exit') {
-            console.log('Exiting...');
-            break;
-        }
-
-        await handleCommand(action);
-    }
-}
-
-// Start the application
-main().catch((err) => {
-  if (err instanceof StoreError) {
-    console.error(chalk.red(`✗  ${err.message}`));
-    console.error(chalk.gray('   Fix or delete the file; no changes were made.'));
-    process.exitCode = 1;
+  if (!raw || raw === 'help' || raw === '--help' || raw === '-h') {
+    printHelp();
     return;
   }
-  throw err;
+
+  const lines = [];
+  const ctx = {
+    store: createFileStore(),
+    username: null, // CLI sessions are local; accounts live on web/SSH
+    write(cls, text) {
+      lines.push({ cls, text });
+    },
+    exit() {},
+  };
+
+  try {
+    await runCommand(raw, ctx);
+  } catch (err) {
+    if (err instanceof StoreError) {
+      console.error(`✗ ${err.message}`);
+      console.error('  Fix or delete the file; no changes were made.');
+      process.exitCode = 1;
+      return;
+    }
+    throw err;
+  }
+
+  if (asJson) {
+    console.log(JSON.stringify({ ok: exitCodeFor(lines) === 0, lines }));
+  } else {
+    printLines(lines);
+  }
+  process.exitCode = exitCodeFor(lines);
+}
+
+main().catch((err) => {
+  console.error(err?.stack ?? String(err));
+  process.exitCode = 1;
 });

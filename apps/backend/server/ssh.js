@@ -1,17 +1,20 @@
 import chalk from 'chalk';
-import { runCommand } from '@todo/shared/commands';
+import { parseCommand, runCommand } from '@todo/shared/commands';
 import { createFileStore } from '@todo/shared/store';
 import { tasksFileFor } from '@todo/shared/accounts';
 
 /**
  * One SSH session = one TUI over the authenticated user's own task file.
- * Command parsing/execution comes from @todo/shared/commands, so the
- * grammar is identical to the web terminal and the CLI.
+ * Parsing comes from @todo/shared/commands' parseCommand (the same
+ * function the CLI uses to dispatch), and execution from runCommand —
+ * identical grammar to the web terminal and the CLI.
  */
 export function createSession(stream, user) {
   let lineBuffer = '';
   let closed = false;
-  const store = createFileStore({ file: tasksFileFor(user.id) });
+  let busy = false;
+  const queue = [];
+  const store = createFileStore({ file: tasksFileFor(user.id), userId: user.id });
 
   const banner = () => {
     stream.write(
@@ -22,7 +25,8 @@ export function createSession(stream, user) {
         chalk.bold.cyan('  ╚══════════════════════════════════════╝'),
         '',
         chalk.gray(`  signed in: ${user.username}`),
-        chalk.gray('  commands: list · add TEXT · done N · undo N · rm N · edit N TEXT · stats · exit'),
+        chalk.gray('  commands: list · add TEXT [--due DATE] [--tag a,b] · done N · undo N'),
+        chalk.gray('            rm N · edit N TEXT · due N DATE · tag N · untag N · stats · exit'),
         '',
       ].join('\r\n')
     );
@@ -57,21 +61,44 @@ export function createSession(stream, user) {
     },
   };
 
+  // Serialize commands so a slow store turn can't interleave outputs.
+  async function pump() {
+    if (busy) return;
+    busy = true;
+    while (queue.length > 0) {
+      const line = queue.shift();
+      try {
+        await runCommand(line, ctx);
+      } catch (err) {
+        ctx.write('err', `  ✗  ${err.message ?? err}`);
+      }
+      if (!closed && stream.writable) {
+        stream.write(chalk.cyanBright('\r\ntodo> '));
+      }
+    }
+    busy = false;
+  }
+
   return {
     start() {
       banner();
-      runCommand('list', ctx);
-      stream.write(chalk.cyanBright('\r\ntodo> '));
+      queue.push('list');
+      pump();
       stream.on('data', (chunk) => {
         lineBuffer += chunk.toString('utf8');
         let idx;
         while ((idx = lineBuffer.indexOf('\n')) !== -1) {
           const line = lineBuffer.slice(0, idx).replace(/\r$/, '');
           lineBuffer = lineBuffer.slice(idx + 1);
-          runCommand(line.trim(), ctx);
-          if (!closed && stream.writable) {
-            stream.write(chalk.cyanBright('todo> '));
+          // The CLI dispatches through parseCommand; here we feed the
+          // raw line to runCommand, which calls the same parser.
+          if (parseCommand(line).cmd === 'exit' || parseCommand(line).cmd === 'quit') {
+            ctx.exit();
+            return;
           }
+          queue.push(line.trim());
+          pump();
+          if (closed) return;
         }
       });
     },

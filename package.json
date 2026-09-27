@@ -1,27 +1,33 @@
 {
   "name": "todo-monorepo",
   "private": true,
+  "version": "1.2.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "type": "module",
+  "bin": {
+    "todo": "apps/terminal/index.js"
+  },
   "scripts": {
     "postinstall": "node scripts/build-web.mjs",
     "build:web": "node scripts/build-web.mjs",
     "start": "npm run dev:backend",
     "dev:backend": "node apps/backend/server/all.js",
     "dev:terminal": "node apps/terminal/index.js",
-    "ssh": "node apps/backend/server/ssh-server.js",
+    "todo": "node apps/terminal/index.js",
     "server": "node apps/backend/server/all.js",
+    "migrate:pg": "node scripts/migrate-pg.mjs",
     "test": "node apps/terminal/test/smoke.test.mjs",
     "test:api": "node apps/backend/test/api.test.mjs",
     "test:ssh": "node apps/backend/test/ssh.test.mjs",
+    "test:shared": "node packages/shared/test/shared.test.mjs",
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:web": "node scripts/verify-web.mjs",
     "verify:local": "node scripts/smoke-local.mjs",
-    "verify": "npm test && npm run test:api && npm run test:ssh && npm run verify:auth && npm run verify:web",
-    "verify:shared": "node scripts/verify-shared.mjs"
+    "verify": "npm test && npm run test:shared && npm run test:api && npm run test:ssh && npm run verify:auth && npm run verify:web",
+    "verify:shared": "npm run test:shared"
   },
   "engines": {
     "node": ">=18"
@@ -30,15 +36,15 @@
     "todo",
     "cli",
     "task-manager",
-    "terminal"
+    "terminal",
+    "ssh"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "A task manager with web, SSH and CLI surfaces over one shared store",
   "dependencies": {
     "chalk": "^6.0.0",
     "express": "^5.2.1",
-    "inquirer": "^12.4.2",
     "ssh2": "^1.17.0"
   }
 }

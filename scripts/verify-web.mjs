@@ -8,6 +8,7 @@ process.env.PORT = process.env.PORT || '3888';
 process.env.HOST = '127.0.0.1';
 process.env.SSH_PORT = process.env.SSH_PORT || '2401';
 process.env.TODO_DATA_DIR = process.env.TODO_DATA_DIR || '/tmp/verify-web';
+process.env.RATE_LIMIT = 'off';
 
 import fs from 'fs';
 fs.rmSync(process.env.TODO_DATA_DIR, { recursive: true, force: true });
@@ -21,8 +22,8 @@ const base = `http://127.0.0.1:${process.env.PORT}`;
 import(path.join(root, 'apps/backend/server/all.js').replace(/\\/g, '/'));
 
 let failures = 0;
-const check = (name, cond) => {
-  console.log(`${cond ? '✔' : '✗'} ${name}`);
+const check = (name, cond, detail = '') => {
+  console.log(`${cond ? '✔' : '✗'} ${name}${!cond && detail ? `: ${detail}` : ''}`);
   if (!cond) failures++;
 };
 
@@ -43,7 +44,8 @@ async function api(p, opts = {}) {
 /** Exactly the adapter shape apps/frontend/public/app.js provides. */
 const restStore = {
   list: () => api('/api/tasks'),
-  create: async ({ text, priority }) => (await api('/api/tasks', { method: 'POST', body: JSON.stringify({ text, priority }) })).task,
+  create: async ({ text, priority, due, tags }) =>
+    (await api('/api/tasks', { method: 'POST', body: JSON.stringify({ text, priority, due, tags }) })).task,
   update: async (id, patch) => (await api(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).task,
   setStatus: async (id, done) => (await api(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status: done ? 'done' : 'todo' }) })).task,
   remove: async (id) => { await api(`/api/tasks/${id}`, { method: 'DELETE' }); },
@@ -63,21 +65,37 @@ setTimeout(async () => {
     await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ username: 'webuser', password: 'secret123' }) });
     check('registered + session cookie', cookie.startsWith('todo_session='));
 
-    await runCommand('add from the web --high', ctx);
+    await runCommand('add from the web --high --due tomorrow --tag web,dev', ctx);
     await runCommand('add second task', ctx);
     await runCommand('list', ctx);
     check('add + list render through REST', out().includes('from the web') && out().includes('second task'));
+    check('due + tags render through the REST store', out().includes('#web') && out().includes('⏳'));
+
+    const created = (await api('/api/tasks')).tasks.find((t) => t.text === 'from the web');
+    check('REST store persisted due + tags',
+      Boolean(created?.due) && JSON.stringify(created?.tags) === JSON.stringify(['web', 'dev']));
+
+    // both tasks are still open here: #1 = "from the web" (high),
+    // #2 = "second task" (med) — numbers are positions in this sorted view.
+    await runCommand('due 2 friday', ctx);
+    await runCommand('tag 2 ssh', ctx);
+    const second = (await api('/api/tasks')).tasks.find((t) => t.text === 'second task');
+    check('due/tag commands mutate through REST',
+      Boolean(second?.due) && second?.tags?.includes('ssh'));
 
     await runCommand('done 1', ctx);
     check('done marks complete', out().includes('completed:'));
 
-    await runCommand('edit 2 edited via web', ctx);
+    await runCommand('edit 1 edited via web', ctx);
     check('edit works from the web path', out().includes('updated: "edited via web"'));
 
     await runCommand('stats', ctx);
     check('stats works', out().includes('total: 2'));
 
-    await runCommand('rm 1', ctx);
+    await runCommand('list +ssh', ctx);
+    check('tag filter works over REST', out().includes('edited via web'));
+
+    await runCommand('rm 2', ctx);
     await runCommand('list', ctx);
     check('rm works', out().includes('removed:'));
 
@@ -88,6 +106,7 @@ setTimeout(async () => {
     const bundle = await (await fetch(`${base}/vendor/shared-commands.js`)).text();
     const mod = await import(`data:text/javascript;base64,${Buffer.from(bundle).toString('base64')}`);
     check('browser bundle exports runCommand', typeof mod.runCommand === 'function');
+    check('browser bundle exports parseDueDate', typeof mod.parseDueDate === 'function');
     check('browser bundle has no node imports', !bundle.includes("from '"));
   } catch (err) {
     check('web flow', false, err.message);
