@@ -221,7 +221,7 @@ mid-request, deletes the data directory, and restarts from nothing.
 
 ## Hosting it
 
-Full deployment guide: [DEPLOY.md](DEPLOY.md) — two one-click Render
+Full deployment guide: [docs/DEPLOY.md](docs/DEPLOY.md) — two one-click Render
 blueprints (`render.yaml` disk-backed ~$7/mo, `render-free.yaml` Postgres
 backed **$0**) and the VPS/Docker setup that also hosts the SSH TUI.
 
@@ -320,4 +320,6 @@ format the next time a change is saved.
 MIT — see [LICENSE](LICENSE).
 
 Workspaces: `@todo/backend`, `@todo/terminal`, `@todo/frontend`,
-`@todo/shared`. See [todo.md](todo.md) for the roadmap.
+`@todo/shared`. See [docs/todo.md](docs/todo.md) for the roadmap and
+[docs/CAPABILITIES.md](docs/CAPABILITIES.md) for what the project can grow
+into. Everything long-form lives in [`docs/`](docs/).

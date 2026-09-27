@@ -124,7 +124,7 @@ docker run -d --name todo \
   todo.sh
 ```
 
-Put Caddy or nginx in front for TLS (see the README's TLS section —
+Put Caddy or nginx in front for TLS (see the [README](../README.md)'s TLS section —
 `proxy_buffering off` matters for SSE). Keep 2222 firewalled or tunneled;
 SSH auth is password-based and meant for personal use.
 

@@ -165,7 +165,7 @@ task with due date) and a "plan my day" summary in the board.
 
 ## If the goal is a hosted product
 
-The README's hosting section covers the self-host path (VPS + TLS proxy).
+The [README](../README.md)'s hosting section covers the self-host path (VPS + TLS proxy).
 For a small hosted SaaS, a pragmatic stack:
 
 1. **App**: small VPS or container host (the SSH listener needs a real

@@ -123,7 +123,8 @@ is exactly what serverless/“free app” platforms can't run:
   (`tasks.json`, `.data/`) is wiped on every restart. Sleeping still kills
   open SSH and SSE sessions. **This is now solved for the web surface**:
   accounts, sessions and tasks live in Postgres, so nothing important is on
-  disk — see `render-free.yaml` and DEPLOY.md Option 2 for the $0 setup.
+  disk — see [`render-free.yaml`](../render-free.yaml) and
+  [DEPLOY.md](DEPLOY.md) Option 2 for the $0 setup.
   The SSH listener is still unreachable there (no raw TCP ingress).
 - **GitHub Pages / Surge / S3** — static only. The web terminal would render
   but there is no API, no accounts, no SSH.
@@ -137,7 +138,7 @@ is exactly what serverless/“free app” platforms can't run:
    REST and accounts only; the instance sleeps when idle but nothing is lost.
 2. **Self-host on a small VPS** (the intended deployment, the only one with
    SSH): `docker run` the image, Caddy or nginx terminates TLS for the
-   web/API surface (see README's TLS section), port 2222 stays firewalled
+   web/API surface (see the [README](../README.md)'s TLS section), port 2222 stays firewalled
    or SSH-tunnelled. Cost: ~$4–6/mo. Nothing in the architecture fights you.
 3. **Don't host at all** — the CLI and local `npm run dev:backend` cover
    single-user use with zero infrastructure. This is the default path, and
