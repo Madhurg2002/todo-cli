@@ -303,6 +303,13 @@ try {
     `status=${me.status}`
   );
 
+  // What the browser actually does on a page load: fetch the app, then ask
+  // /api/auth/me with the cookie. The web client boots on exactly this call.
+  const page = await fetch(`${base}/`);
+  const html = await page.text();
+  check('the web client is served', page.ok && html.includes('<script'), `status=${page.status}`);
+  check('the web client restores the session from /api/auth/me', html.includes('app.js'));
+
   const relogin = await json('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username: USER, password: PASSWORD }),

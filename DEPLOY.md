@@ -75,6 +75,32 @@ Already have data in a file store? `npm run migrate:pg` copies
 (run it once, against the new `DATABASE_URL`, before pointing the service at
 it).
 
+### Deploying it from the command line
+
+The dashboard blueprint is the easy way, but the official CLI does the same
+thing in one command — useful from CI or a fresh machine:
+
+```bash
+# once per machine: render login  (opens a browser to authorize)
+render services create \
+  --name todo-sh-free \
+  --type web_service \
+  --repo https://github.com/Madhurg2002/todo-cli \
+  --runtime node \
+  --build-command "npm install" \
+  --start-command "node apps/backend/server/start.js" \
+  --plan free \
+  --env-var TRUST_PROXY=1 \
+  --env-var DATABASE_URL='<your pooled Postgres URL>' \
+  --env-var PUBLIC_URL='https://todo-sh-free.onrender.com'
+
+render services deploys create <service-id>   # redeploy after a config change
+```
+
+`DATABASE_URL` is the only value you must supply. Use the **pooled**
+connection string — a free instance idles out often enough that a direct
+connection is the wrong shape.
+
 ### Checking the free path before you deploy
 
 `npm run test:pg` boots a throwaway Postgres and runs the whole suite plus a
