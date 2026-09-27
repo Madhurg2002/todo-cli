@@ -27,7 +27,9 @@
     "verify:web": "node scripts/verify-web.mjs",
     "verify:local": "node scripts/smoke-local.mjs",
     "verify:pg": "node scripts/pg-ping.mjs",
-    "test:pg": "node scripts/run-with-pg.mjs npm run verify",
+    "verify:free-host": "node scripts/verify-free-host.mjs",
+    "verify:pg-all": "npm run verify && npm run verify:free-host",
+    "test:pg": "node scripts/run-with-pg.mjs npm run verify:pg-all",
     "verify": "npm test && npm run test:shared && npm run test:api && npm run test:ssh && npm run verify:auth && npm run verify:web",
     "verify:shared": "npm run test:shared"
   },

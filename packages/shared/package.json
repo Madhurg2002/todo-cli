@@ -8,6 +8,7 @@
     "./commands": "./commands.js",
     "./constants": "./constants.js",
     "./accounts": "./accounts.js",
+    "./pg-retry": "./pg-retry.js",
     "./jsonfile": "./jsonfile.js"
   },
   "dependencies": {

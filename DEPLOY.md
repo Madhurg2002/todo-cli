@@ -62,14 +62,28 @@ the disk.
 | Health check | `/api/health` | also reports which store is active |
 
 One honest caveat about the free tier: idle instances sleep, so the first
-request after a quiet period takes a few seconds to wake up. A free uptime
-monitor (e.g. UptimeRobot against `/api/health` every 10 minutes) keeps it
-warm if that bothers you. Data is safe regardless — the sleep is cosmetic.
+request after a quiet period takes a few seconds to wake up — and the database
+suspends itself too, which means the very first login after a quiet spell is
+the request most likely to hit a dead connection. The server retries
+transport-level failures with backoff, so that request waits instead of
+failing; a free uptime monitor (e.g. UptimeRobot against `/api/health` every
+10 minutes) keeps both warm if you would rather not wait. Data is safe
+either way — the sleep is cosmetic.
 
 Already have data in a file store? `npm run migrate:pg` copies
 `users.json`, `sessions.json` and the task files into Postgres in one pass
 (run it once, against the new `DATABASE_URL`, before pointing the service at
 it).
+
+### Checking the free path before you deploy
+
+`npm run test:pg` boots a throwaway Postgres and runs the whole suite plus a
+deployment rehearsal against it. The rehearsal runs the real production
+start command, registers an account, cuts the database endpoint off
+mid-request to simulate the database waking up, then **deletes the data
+directory and starts a brand-new process** — after which the original session
+cookie, the account and its tasks all still work. It is the closest thing to
+the real thing you can run without a Render account, and it runs in CI too.
 
 ## Option 3 — VPS / Docker (full feature set, including SSH)
 

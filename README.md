@@ -192,6 +192,15 @@ Two adapters, one interface, selected at boot:
 Set `TODO_STORE=file` to force the file store even with `DATABASE_URL`
 present.
 
+**Free-tier databases sleep.** A free serverless Postgres suspends its
+compute when it sees no traffic, and the host container is recycled on its own
+schedule, so the first query after an idle period can land on a dead
+connection. Queries are retried with backoff when the failure is
+transport-level (a real SQL error is never retried), so a cold start returns
+the account rather than a 500. `npm run verify:free-host` rehearses exactly
+this: it boots the production entrypoint, kills the database endpoint
+mid-request, deletes the data directory, and restarts from nothing.
+
 ## Configuration
 
 | Env | Default | Used by |
@@ -270,7 +279,8 @@ docker run -p 3000:3000 -p 2222:2222 -e DATABASE_URL=postgres://… todo.sh
 npm run dev:backend    # API + web + SSH in one process (default ports)
 npm run todo           # the CLI
 npm run verify         # all six suites (CLI, shared core, API, SSH, accounts, web path)
-npm run test:pg        # the same six suites against a throwaway Postgres
+npm run test:pg        # the same six suites + a free-host rehearsal, against a throwaway Postgres
+npm run verify:free-host  # prove accounts survive a total loss of local disk (needs DATABASE_URL)
 npm run build:web      # refresh apps/frontend/dist (also runs on install)
 ```
 

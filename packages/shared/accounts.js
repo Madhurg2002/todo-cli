@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'crypto';
 import { readJson, writeJson, withFileLock } from './jsonfile.js';
+import { retryingPool } from './pg-retry.js';
 import {
   PASSWORD_MIN_LENGTH,
   USERNAME_RE,
@@ -261,8 +262,12 @@ async function getPgPool() {
       );
     }
     const Pool = pg.default?.Pool ?? pg.Pool;
-    pgPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
-    pgPool.on('error', () => {}); // idle client errors must not crash the server
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+    pool.on('error', () => {}); // idle client errors must not crash the server
+    // A free-tier database suspends itself when idle and the container
+    // holding this pool gets recycled; retry transport failures so the first
+    // login after a cold start works instead of returning a 500.
+    pgPool = retryingPool(pool);
     await pgPool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY,

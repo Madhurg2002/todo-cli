@@ -74,3 +74,8 @@ jobs:
 
       - name: Full suite against Postgres
         run: npm run verify
+
+      # The free-tier deployment story: accounts and sessions survive a total
+      # loss of local disk, and a waking database does not 500 a login.
+      - name: Free-host rehearsal (no disk, waking database)
+        run: npm run verify:free-host

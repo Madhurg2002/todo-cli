@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readJson, writeJson, withFileLock } from './jsonfile.js';
+import { retryingPool } from './pg-retry.js';
 import {
   PRIORITIES,
   DEFAULT_PRIORITY,
@@ -356,8 +357,12 @@ let sharedPool = null;
 export async function getSharedPgPool() {
   if (!sharedPool) {
     const pg = await getPg();
-    sharedPool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
-    sharedPool.on('error', () => {}); // idle client errors must not crash the server
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+    pool.on('error', () => {}); // idle client errors must not crash the server
+    // Free-tier hosts recycle the container and suspend the database
+    // independently; retry transport failures so a cold start does not
+    // look like a failed login. See pg-retry.js.
+    sharedPool = retryingPool(pool);
   }
   return sharedPool;
 }
@@ -367,7 +372,7 @@ export async function closePgPool() {
   if (sharedPool) {
     const pool = sharedPool;
     sharedPool = null;
-    await pool.end().catch(() => {});
+    await pool.end().catch(() => {}); // the proxy forwards end() to the real pool
   }
 }
 

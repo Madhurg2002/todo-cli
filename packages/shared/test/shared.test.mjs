@@ -434,7 +434,88 @@ if (!pgAccountsUrl) {
   }
 }
 
+/**
+ * Free-tier resilience: a suspended or recycled database must not turn the
+ * first request after an idle period into a 500. Uses a stub pool so this
+ * runs without a database.
+ */
+async function pgRetryFlow() {
+  console.log('\npg retry:');
+  const { isTransientPgError, retryingPool } = await import('@todo/shared/pg-retry');
+  const check = (name, cond) => {
+    if (cond) console.log(`✔ ${name}`);
+    else {
+      failures++;
+      console.error(`✗ ${name}`);
+    }
+  };
+
+  const suspended = Object.assign(new Error('terminating connection due to administrator command'), {
+    code: '57P01',
+  });
+
+  check('a suspended connection is treated as transient', isTransientPgError(suspended));
+  check('a socket reset is treated as transient', isTransientPgError(Object.assign(new Error('x'), { code: 'ECONNRESET' })));
+  check('a wrapped socket error is treated as transient',
+    isTransientPgError(Object.assign(new Error('query failed'), { cause: Object.assign(new Error('y'), { code: 'ECONNRESET' }) })));
+  check('a unique-violation is NOT transient', !isTransientPgError(Object.assign(new Error('duplicate key'), { code: '23505' })));
+  check('a syntax error is NOT transient', !isTransientPgError(new Error('syntax error at or near "SELCT"')));
+
+  // A pool whose first two calls die with a transport error, then works —
+  // exactly what a warm-up-after-suspension looks like.
+  let calls = 0;
+  const stub = {
+    async query() {
+      calls++;
+      if (calls <= 2) throw suspended;
+      return { rows: [{ ok: true }] };
+    },
+    async end() {},
+    on() {},
+  };
+  const pool = retryingPool(stub, { delaysMs: [1, 1, 1] });
+  const res = await pool.query('SELECT 1');
+  check('a query is retried until the database answers', res.rows[0].ok === true && calls === 3);
+
+  // A real SQL error must surface immediately, not burn four attempts.
+  let hardCalls = 0;
+  const broken = {
+    async query() {
+      hardCalls++;
+      throw Object.assign(new Error('syntax error'), { code: '42601' });
+    },
+    async end() {},
+    on() {},
+  };
+  await retryingPool(broken, { delaysMs: [1, 1, 1] }).query('SELCT 1').then(
+    () => check('a real SQL error is not retried', false),
+    () => check('a real SQL error is not retried', hardCalls === 1)
+  );
+
+  // Exhausted retries still reject — we never hang or swallow the error.
+  let deadCalls = 0;
+  const dead = {
+    async query() {
+      deadCalls++;
+      throw suspended;
+    },
+    async end() {},
+    on() {},
+  };
+  await retryingPool(dead, { attempts: 3, delaysMs: [1, 1, 1] }).query('SELECT 1').then(
+    () => check('a permanently dead database eventually rejects', false),
+    () => check('a permanently dead database eventually rejects', deadCalls === 3)
+  );
+
+  // Non-query pool members must still work (closePgPool calls end()).
+  let ended = false;
+  const closable = { async query() {}, async end() { ended = true; }, on() {} };
+  await retryingPool(closable).end();
+  check('the wrapper still forwards end() to the real pool', ended);
+}
+
 await accountsFlow();
+await pgRetryFlow();
 await Promise.all(pending); // let async checks finish before exiting
 
 await closeAccountsPool();
