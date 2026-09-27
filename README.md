@@ -225,6 +225,9 @@ Full deployment guide: [docs/DEPLOY.md](docs/DEPLOY.md) — two one-click Render
 blueprints (`render.yaml` disk-backed ~$7/mo, `render-free.yaml` Postgres
 backed **$0**) and the VPS/Docker setup that also hosts the SSH TUI.
 
+Field-by-field settings to paste into the dashboard, plus why Vercel can't
+host it: [docs/DEPLOY_CONFIG.md](docs/DEPLOY_CONFIG.md).
+
 The $0 path in short: a free Postgres (Neon) + `DATABASE_URL` + the free
 plan. Accounts and sessions live in the database, so the instance can sleep
 and restart without anyone losing their login.
