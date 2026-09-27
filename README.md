@@ -284,8 +284,11 @@ npm run verify:free-host  # prove accounts survive a total loss of local disk (n
 npm run build:web      # refresh apps/frontend/dist (also runs on install)
 ```
 
-CI (`.github/workflows/ci.yml`) runs all suites on Node 20 and 22 for every
-push and pull request.
+CI (`.github/workflows/ci.yml`) covers all suites on Node 20 and 22 plus a
+Postgres-backed run. It is currently **disabled** — it only runs when you
+trigger it by hand from the Actions tab, so pushes cost nothing. Re-enable
+automatic runs by restoring the `push`/`pull_request` triggers at the top of
+that file.
 
 ## Task file format
 

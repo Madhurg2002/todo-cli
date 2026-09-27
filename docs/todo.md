@@ -83,7 +83,8 @@ A task manager with three surfaces over one shared core:
 
 ### Shippable
 - [x] GitHub Actions CI: all six suites on Node 20 and 22, plus a
-      Postgres-backed run of the same suites.
+      Postgres-backed run of the same suites. Currently manual-trigger
+      only, so pushes do not run it.
 - [x] MIT license.
 - [x] One container: Dockerfile running web + API + SSH with a data
       volume (Postgres mode via `DATABASE_URL`, for tasks *and* accounts).

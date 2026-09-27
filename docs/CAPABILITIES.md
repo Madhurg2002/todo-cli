@@ -72,7 +72,8 @@ one surface appears on the others (SSE live feed on web, re-list on SSH).
 ### Ops
 
 - Single Dockerfile (web + API + SSH, data volume), GitHub Actions CI
-  (all six suites on Node 20/22, plus a Postgres-backed run), MIT license.
+  (all six suites on Node 20/22, plus a Postgres-backed run; currently
+  manual-trigger only), MIT license.
 - Two Render blueprints: `render.yaml` (disk-backed, ~$7/mo) and
   `render-free.yaml` (Postgres-backed, **$0**).
 

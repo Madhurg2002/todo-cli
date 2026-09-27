@@ -1,9 +1,14 @@
 name: CI
 
+# Disabled: the workflow only runs when triggered by hand from the Actions
+# tab, so pushes and pull requests no longer burn CI minutes. To turn
+# automatic runs back on, restore the push/pull_request triggers below and
+# delete this line.
 on:
-  push:
-    branches: [master, main]
-  pull_request:
+  workflow_dispatch:
+#  push:
+#    branches: [master, main]
+#  pull_request:
 
 jobs:
   test:
