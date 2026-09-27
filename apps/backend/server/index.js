@@ -21,12 +21,23 @@ import {
   AuthError,
 } from '@todo/shared/accounts';
 import { registerSharedBundle } from './shared-bundle.js';
+import {
+  VERSION,
+  SESSION_COOKIE,
+  SESSION_TTL_SECONDS,
+  BODY_LIMIT,
+  RATE_WINDOW_MS,
+  AUTH_RATE_PER_MINUTE,
+  WRITE_RATE_PER_MINUTE,
+  SSE_KEEPALIVE_MS,
+  DEFAULT_PRIORITY,
+} from '@todo/shared/constants';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '64kb' }));
+app.use(express.json({ limit: BODY_LIMIT }));
 
 // Behind TLS (nginx/caddy), cookies need the Secure flag. Set
 // TRUST_PROXY=1 when the app sits behind a reverse proxy that
@@ -36,8 +47,7 @@ if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 // Browser build of the shared command grammar for the web terminal.
 registerSharedBundle(app);
 
-const SESSION_COOKIE = 'todo_session';
-const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
+const SESSION_MAX_AGE = SESSION_TTL_SECONDS;
 const BOOTED_AT = new Date().toISOString();
 
 // --- helpers --------------------------------------------------------------
@@ -118,7 +128,7 @@ const storeFor = (req) => {
 
 // --- rate limiting (no dependencies) ---------------------------------------
 
-const WINDOW_MS = 60_000;
+const WINDOW_MS = RATE_WINDOW_MS;
 const RATE_LIMIT_OFF = process.env.RATE_LIMIT === 'off';
 
 function rateLimit({ name, max, windowMs = WINDOW_MS }) {
@@ -146,8 +156,8 @@ function rateLimit({ name, max, windowMs = WINDOW_MS }) {
   };
 }
 
-const authLimiter = rateLimit({ name: 'auth', max: 10 });
-const writeLimiter = rateLimit({ name: 'write', max: 120 });
+const authLimiter = rateLimit({ name: 'auth', max: AUTH_RATE_PER_MINUTE });
+const writeLimiter = rateLimit({ name: 'write', max: WRITE_RATE_PER_MINUTE });
 
 // --- request logging -------------------------------------------------------
 
@@ -267,7 +277,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'todo-api',
-    version: '1.2.0',
+    version: VERSION,
     store: storeKind,
     uptimeSec: Math.round(process.uptime()),
     bootedAt: BOOTED_AT,
@@ -301,7 +311,7 @@ app.get('/api/events', requireAuth, (req, res) => {
     } catch {
       /* closed — cleanup below */
     }
-  }, 25_000);
+  }, SSE_KEEPALIVE_MS);
 
   const off = onTaskChange(send);
   function cleanup() {
@@ -345,7 +355,7 @@ app.post('/api/tasks', requireAuth, writeLimiter, asyncHandler(async (req, res) 
     res.status(400).json({ error: 'text is required' });
     return;
   }
-  const priority = req.body?.priority ?? 'med';
+  const priority = req.body?.priority ?? DEFAULT_PRIORITY;
   if (!PRIORITIES.includes(priority)) {
     res.status(400).json({ error: `priority must be one of: ${PRIORITIES.join(', ')}` });
     return;

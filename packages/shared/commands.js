@@ -14,6 +14,8 @@
  * route raw input through it, so the surfaces cannot drift.
  */
 
+import { DEFAULT_PRIORITY, MAX_TAGS, PROGRESS_BAR_WIDTH, DUE_DEFAULT_HOUR } from './constants.js';
+
 export const HELP_ENTRIES = [
   '  list [todo|done|--high|--med|--low|+tag|overdue]',
   '                                show tasks (optionally filtered)',
@@ -40,7 +42,7 @@ export function parseCommand(raw) {
   const arg = rest.join(' ');
 
   let text = arg;
-  let priority = 'med';
+  let priority = DEFAULT_PRIORITY;
   let index = Number.NaN;
   let due;
   let tags;
@@ -95,7 +97,7 @@ export function parseDueDate(input) {
   if (raw === 'clear' || raw === 'none' || raw === 'off') return null;
 
   const now = new Date();
-  const at = (base, days, hour = 17) => {
+  const at = (base, days, hour = DUE_DEFAULT_HOUR) => {
     const d = new Date(base);
     d.setDate(d.getDate() + days);
     d.setHours(hour, 0, 0, 0);
@@ -129,7 +131,7 @@ export function parseDueDate(input) {
 }
 
 /** Build the ASCII progress bar shared by terminal renderers. */
-export function progressBar(done, total, { width = 20 } = {}) {
+export function progressBar(done, total, { width = PROGRESS_BAR_WIDTH } = {}) {
   const pct = total ? Math.round((done / total) * 100) : 0;
   const filled = Math.min(width, Math.round(pct / (100 / width)));
   return { pct, filled, empty: width - filled };
@@ -372,11 +374,11 @@ function parseTags(input) {
     .split(',')
     .map((t) => t.trim().replace(/^#/, '').toLowerCase())
     .filter(Boolean)
-    .slice(0, 10);
+    .slice(0, MAX_TAGS);
 }
 
 function mergeTags(existing = [], additions = []) {
-  return [...new Set([...(existing ?? []), ...additions])].slice(0, 10);
+  return [...new Set([...(existing ?? []), ...additions])].slice(0, MAX_TAGS);
 }
 
 function isOverdue(task) {

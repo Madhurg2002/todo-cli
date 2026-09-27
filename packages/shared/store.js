@@ -2,6 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readJson, writeJson, withFileLock } from './jsonfile.js';
+import {
+  PRIORITIES,
+  DEFAULT_PRIORITY,
+  PRIORITY_RANK,
+  MAX_TAGS,
+} from './constants.js';
 
 /**
  * Task store. Every surface reads/writes tasks through this module; the
@@ -16,7 +22,7 @@ import { readJson, writeJson, withFileLock } from './jsonfile.js';
  *                            copies existing JSON accounts across.
  */
 
-export const PRIORITIES = ['low', 'med', 'high'];
+export { PRIORITIES };
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -60,14 +66,14 @@ export function sanitizeDue(value) {
   return new Date(ms).toISOString();
 }
 
-/** Tags are lowercase words; leading '#' is stripped, capped at 10. */
+/** Tags are lowercase words; leading '#' is stripped, capped at MAX_TAGS. */
 export function sanitizeTags(value) {
   if (!Array.isArray(value)) return [];
   return [...new Set(
     value
       .map((t) => String(t).trim().replace(/^#/, '').toLowerCase())
       .filter(Boolean)
-  )].slice(0, 10);
+  )].slice(0, MAX_TAGS);
 }
 
 /** A task is overdue when it is not done and its due date has passed. */
@@ -115,12 +121,12 @@ export function saveTasks(tasks, file = getTasksFile()) {
   writeJson(file, tasks);
 }
 
-export function addTask(tasks, { text, priority = 'med', due = null, tags = [] }) {
+export function addTask(tasks, { text, priority = DEFAULT_PRIORITY, due = null, tags = [] }) {
   const task = {
     id: crypto.randomUUID(),
     text,
     status: 'todo',
-    priority: PRIORITIES.includes(priority) ? priority : 'med',
+    priority: PRIORITIES.includes(priority) ? priority : DEFAULT_PRIORITY,
     due: sanitizeDue(due),
     tags: sanitizeTags(tags),
     createdAt: new Date().toISOString(),
@@ -185,7 +191,7 @@ export function filterTasks(tasks, { status, priority, tag, overdue } = {}) {
  * priority, then soonest due date first (no-due tasks last).
  */
 export function sortForList(tasks) {
-  const rank = { high: 0, med: 1, low: 2 };
+  const rank = PRIORITY_RANK;
   return [...tasks].sort((a, b) => {
     if (a.status !== b.status) return a.status === 'done' ? 1 : -1;
     if (a.priority !== b.priority) return rank[a.priority] - rank[b.priority];
@@ -276,7 +282,7 @@ export function createFileStore({ file = getTasksFile(), userId = null } = {}) {
       return { tasks: sortForList(filterTasks(tasks, filters)) };
     },
 
-    async create({ text, priority = 'med', due = null, tags = [] }) {
+    async create({ text, priority = DEFAULT_PRIORITY, due = null, tags = [] }) {
       const task = await mutate((tasks) => {
         const created = addTask(tasks, { text: text.trim(), priority, due, tags });
         return created;
@@ -437,7 +443,7 @@ export async function createPostgresStore({ connectionString, userId = null } = 
           id,
           userId,
           String(text).trim(),
-          PRIORITIES.includes(priority) ? priority : 'med',
+          PRIORITIES.includes(priority) ? priority : DEFAULT_PRIORITY,
           due ? new Date(due) : null,
           sanitizeTags(tags),
         ]
@@ -455,7 +461,7 @@ export async function createPostgresStore({ connectionString, userId = null } = 
         sets.push(`text = $${values.length}`);
       }
       if (patch.priority !== undefined) {
-        values.push(PRIORITIES.includes(patch.priority) ? patch.priority : null);
+        values.push(PRIORITIES.includes(patch.priority) ? patch.priority : DEFAULT_PRIORITY);
         sets.push(`priority = $${values.length}`);
       }
       if (patch.due !== undefined) {

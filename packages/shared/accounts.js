@@ -14,12 +14,16 @@ import fs from 'fs';
 import path from 'path';
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'crypto';
 import { readJson, writeJson, withFileLock } from './jsonfile.js';
+import {
+  PASSWORD_MIN_LENGTH,
+  USERNAME_RE,
+  SESSION_TTL_MS,
+  MAX_SESSIONS_PER_USER,
+} from './constants.js';
 
 const DATA_DIR = process.env.TODO_DATA_DIR || path.join(process.cwd(), '.data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const MAX_SESSIONS_PER_USER = 25;
 
 export class AuthError extends Error {
   constructor(message, status = 400) {
@@ -51,7 +55,6 @@ export function verifyPassword(password, stored) {
 
 // --- users ----------------------------------------------------------------
 
-const USERNAME_RE = /^[a-z0-9][a-z0-9_.-]{2,31}$/;
 
 function publicUser(user) {
   return { id: user.id, username: user.username, createdAt: user.createdAt };
@@ -92,8 +95,8 @@ export async function createUser({ username, password }) {
   if (!USERNAME_RE.test(key)) {
     throw new AuthError('username must be 3-32 characters: a-z, 0-9, _ . -');
   }
-  if (typeof password !== 'string' || password.length < 8) {
-    throw new AuthError('password must be at least 8 characters');
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
+    throw new AuthError(`password must be at least ${PASSWORD_MIN_LENGTH} characters`);
   }
   return mutateUsers((users) => {
     if (users.find((u) => u.username === key)) {
@@ -124,8 +127,8 @@ export function authenticate(username, password) {
  * keep the device that made the change signed in.
  */
 export async function changePassword(userId, currentPassword, newPassword, { keepToken = null } = {}) {
-  if (typeof newPassword !== 'string' || newPassword.length < 8) {
-    throw new AuthError('new password must be at least 8 characters');
+  if (typeof newPassword !== 'string' || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new AuthError(`new password must be at least ${PASSWORD_MIN_LENGTH} characters`);
   }
   await mutateUsers((users) => {
     const user = users.find((u) => u.id === userId);

@@ -6,6 +6,7 @@
   "exports": {
     "./store": "./store.js",
     "./commands": "./commands.js",
+    "./constants": "./constants.js",
     "./accounts": "./accounts.js",
     "./jsonfile": "./jsonfile.js"
   },

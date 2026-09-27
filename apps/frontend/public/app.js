@@ -168,11 +168,15 @@ function renderBoard() {
 
   // stats strip
   if (stats) {
+    const p = stats.byPriority ?? { high: 0, med: 0, low: 0 };
     $('stats-strip').innerHTML =
       `<span><b>${stats.total}</b> total</span>` +
       `<span><b>${stats.todo}</b> open</span>` +
       `<span><b>${stats.done}</b> done</span>` +
       (stats.overdue ? `<span class="overdue-stat"><b>${stats.overdue}</b> overdue</span>` : '') +
+      `<span class="pri-stat p-high"><b>${p.high}</b> high</span>` +
+      `<span class="pri-stat p-med"><b>${p.med}</b> med</span>` +
+      `<span class="pri-stat p-low"><b>${p.low}</b> low</span>` +
       `<span class="pct-wrap"><span class="mini-bar"><span style="width:${stats.percentDone}%"></span></span><b>${stats.percentDone}%</b></span>`;
   }
 
