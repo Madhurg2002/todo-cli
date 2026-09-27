@@ -55,7 +55,7 @@ packages/
   shared/      @todo/shared     the shared core
     store.js     task store: file adapter, Postgres adapter, filters, stats
     commands.js  pure command grammar: parseCommand, runCommand
-    accounts.js  users, scrypt hashing, sessions, password/account lifecycle
+    accounts.js  users, scrypt hashing, sessions — file or Postgres
     jsonfile.js  atomic JSON writes + cross-process file locking
 ```
 
@@ -180,9 +180,14 @@ Two adapters, one interface, selected at boot:
   other. This is what the previous release got wrong under concurrency;
   it is now tested.
 - **Postgres store**: set `DATABASE_URL` (and don't set `TODO_STORE=file`)
-  and every surface uses Postgres. Migrate existing JSON data with
-  `npm run migrate:pg`. Requires `npm install pg` (kept out of the default
-  dependency tree on purpose).
+  and every surface uses Postgres — **tasks, accounts and sessions alike**.
+  This is what makes the $0 free-tier deploy possible: a disk-less host with
+  a managed database keeps nothing important on local disk. Schema
+  (`users`, `sessions`, `tasks`) is created automatically on first boot.
+  Migrate existing JSON data — users, sessions and tasks — with
+  `npm run migrate:pg`. The `pg` driver is an optional dependency, so plain
+  `npm install` already pulls it in; it stays optional so a file-only
+  install never fails on a machine without libpq.
 
 Set `TODO_STORE=file` to force the file store even with `DATABASE_URL`
 present.
@@ -196,8 +201,8 @@ present.
 | `SSH_PORT` | `2222` | SSH TUI |
 | `HOST` | `0.0.0.0` | bind address |
 | `SSH_HOST_KEY_DIR` | `.ssh-host` | host key persistence |
-| `TODO_DATA_DIR` | `.data` | accounts, sessions, per-user task files |
-| `DATABASE_URL` | — | selects the Postgres store |
+| `TODO_DATA_DIR` | `.data` | accounts, sessions, per-user task files (file store only) |
+| `DATABASE_URL` | — | selects the Postgres store for tasks **and** accounts |
 | `TODO_STORE` | auto | `file` forces the file store |
 | `PUBLIC_URL` | — | display URL in boot log (set when behind TLS) |
 | `TRUST_PROXY` | — | `1` when behind a reverse proxy (enables `Secure` cookies) |
@@ -207,9 +212,13 @@ present.
 
 ## Hosting it
 
-Full deployment guide: [DEPLOY.md](DEPLOY.md) — one-click Render blueprint
-(`render.yaml`, disk-backed, ~$7/mo), the $0 free-tier path, and the
-VPS/Docker setup that also hosts the SSH TUI.
+Full deployment guide: [DEPLOY.md](DEPLOY.md) — two one-click Render
+blueprints (`render.yaml` disk-backed ~$7/mo, `render-free.yaml` Postgres
+backed **$0**) and the VPS/Docker setup that also hosts the SSH TUI.
+
+The $0 path in short: a free Postgres (Neon) + `DATABASE_URL` + the free
+plan. Accounts and sessions live in the database, so the instance can sleep
+and restart without anyone losing their login.
 
 ### TLS in front of HTTP
 
@@ -261,6 +270,7 @@ docker run -p 3000:3000 -p 2222:2222 -e DATABASE_URL=postgres://… todo.sh
 npm run dev:backend    # API + web + SSH in one process (default ports)
 npm run todo           # the CLI
 npm run verify         # all six suites (CLI, shared core, API, SSH, accounts, web path)
+npm run test:pg        # the same six suites against a throwaway Postgres
 npm run build:web      # refresh apps/frontend/dist (also runs on install)
 ```
 

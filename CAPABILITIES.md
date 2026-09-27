@@ -60,8 +60,9 @@ one surface appears on the others (SSE live feed on web, re-list on SSH).
 
 - **File store** (default): atomic writes (tmp+rename), per-file advisory
   locks, legacy file upgrade on load.
-- **Postgres store**: auto-selected by `DATABASE_URL`; schema auto-created;
-  `npm run migrate:pg` copies JSON accounts over. Free-tier options below.
+- **Postgres store**: auto-selected by `DATABASE_URL`; covers tasks **and**
+  accounts/sessions; schema auto-created on first boot;
+  `npm run migrate:pg` copies the JSON users, sessions and tasks over.
 - **REST API**: auth (register/login/logout, sessions, password, account
   deletion), tasks CRUD + `?status/priority/tag/overdue` filters, stats,
   SSE change feed, Bearer tokens for scripts.
@@ -71,7 +72,9 @@ one surface appears on the others (SSE live feed on web, re-list on SSH).
 ### Ops
 
 - Single Dockerfile (web + API + SSH, data volume), GitHub Actions CI
-  (all six suites on Node 20/22), MIT license.
+  (all six suites on Node 20/22, plus a Postgres-backed run), MIT license.
+- Two Render blueprints: `render.yaml` (disk-backed, ~$7/mo) and
+  `render-free.yaml` (Postgres-backed, **$0**).
 
 ---
 
@@ -127,8 +130,9 @@ Send "due today / overdue" digests or per-task reminders.
 
 ### Managed Postgres — via **Tiger Cloud** (or Neon)
 
-The Postgres adapter exists; it just needs a `DATABASE_URL`. Free tiers make
-multi-account web/SSH deployments durable without a VPS.
+Already shipped. `DATABASE_URL` moves tasks, accounts and sessions into the
+database, which is what makes the $0 Render free tier work: a disk-less,
+sleeping container loses nothing. `render-free.yaml` wires it up.
 
 - Env var: `DATABASE_URL` · free tier (no credit card) · docs: tigerdata.com/docs
 - Fit: zero code changes — set the env var, optionally run `npm run migrate:pg`.

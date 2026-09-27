@@ -82,10 +82,13 @@ A task manager with three surfaces over one shared core:
 - [x] Graceful SIGINT/SIGTERM shutdown of HTTP + SSH listeners.
 
 ### Shippable
-- [x] GitHub Actions CI: all six suites on Node 20 and 22.
+- [x] GitHub Actions CI: all six suites on Node 20 and 22, plus a
+      Postgres-backed run of the same suites.
 - [x] MIT license.
 - [x] One container: Dockerfile running web + API + SSH with a data
-      volume (Postgres mode via `DATABASE_URL`).
+      volume (Postgres mode via `DATABASE_URL`, for tasks *and* accounts).
+- [x] $0 hosting: accounts/sessions ported to Postgres, so a disk-less
+      Render free instance survives spin-downs (`render-free.yaml`).
 - [x] `bin: todo` + `npm run todo` alias — the README shell-function
       workaround is gone.
 - [x] README rewritten CLI-first with a per-surface capability matrix and
@@ -116,10 +119,12 @@ is exactly what serverless/“free app” platforms can't run:
   TCP port or hold the SSH handshake open; SSE also conflicts with short
   function timeouts. Verdict: not hostable without rewriting SSH out.
 - **Fly.io / Render free tiers** — can run the process, but free instances
-  sleep on idle and restart on a schedule. Sleeping kills open SSH and SSE
-  sessions, and container-local disk (`tasks.json`, `.data/`) is wiped on
-  every restart unless you add a paid persistent volume. The data-loss risk
-  makes the free tier a no for anything real.
+  sleep on idle and restart on a schedule, and container-local disk
+  (`tasks.json`, `.data/`) is wiped on every restart. Sleeping still kills
+  open SSH and SSE sessions. **This is now solved for the web surface**:
+  accounts, sessions and tasks live in Postgres, so nothing important is on
+  disk — see `render-free.yaml` and DEPLOY.md Option 2 for the $0 setup.
+  The SSH listener is still unreachable there (no raw TCP ingress).
 - **GitHub Pages / Surge / S3** — static only. The web terminal would render
   but there is no API, no accounts, no SSH.
 - **Free Postgres tiers (Supabase/Neon)** — fine for the store itself
@@ -128,11 +133,13 @@ is exactly what serverless/“free app” platforms can't run:
 
 **What actually works today:**
 
-1. **Self-host on a small VPS** (the intended deployment): `docker run` the
-   image, Caddy or nginx terminates TLS for the web/API surface (see
-   README's TLS section), port 2222 stays firewalled or SSH-tunnelled.
-   Cost: ~$4–6/mo. Nothing in the architecture fights you.
-2. **Don't host at all** — the CLI and local `npm run dev:backend` cover
+1. **Render free tier + managed Postgres ($0)** — `render-free.yaml`. Web,
+   REST and accounts only; the instance sleeps when idle but nothing is lost.
+2. **Self-host on a small VPS** (the intended deployment, the only one with
+   SSH): `docker run` the image, Caddy or nginx terminates TLS for the
+   web/API surface (see README's TLS section), port 2222 stays firewalled
+   or SSH-tunnelled. Cost: ~$4–6/mo. Nothing in the architecture fights you.
+3. **Don't host at all** — the CLI and local `npm run dev:backend` cover
    single-user use with zero infrastructure. This is the default path, and
    the reason the CLI stayed account-less.
 
@@ -143,6 +150,7 @@ is exactly what serverless/“free app” platforms can't run:
 | Shared core (store + grammar + accounts) | ✅ tested |
 | Concurrency safety (atomic writes + file locks) | ✅ tested |
 | Schema: due + tags (file + Postgres) | ✅ tested |
+| Postgres accounts + sessions | ✅ tested (CI runs the full suite against PG) |
 | Auth (password change, sessions, deletion) | ✅ tested |
 | REST API | ✅ full CRUD + filters + stats, tested |
 | SSH TUI | ✅ shared grammar, tested end-to-end |

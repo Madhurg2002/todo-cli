@@ -91,13 +91,17 @@ function sendCommand(conn, cmd, { waitMs = 400 } = {}) {
 }
 
 try {
-  check('register alice', (await register('alice', 'secret123')) === 201);
-  check('register bob', (await register('bob', 'secret123')) === 201);
+  // Unique per suite: in Postgres mode every suite shares one database, so a
+  // second `alice` would collide with the account the API suite already made.
+  const ALICE = 'sshalice';
+  const BOB = 'sshbob';
+  check('register alice', (await register(ALICE, 'secret123')) === 201);
+  check('register bob', (await register(BOB, 'secret123')) === 201);
 
   // --- auth rejection -----------------------------------------------------
   let rejected = false;
   try {
-    const bad = await connect('alice', 'wrong-password');
+    const bad = await connect(ALICE, 'wrong-password');
     bad.end();
   } catch {
     rejected = true;
@@ -114,11 +118,11 @@ try {
   check('unknown account is rejected', unknownRejected);
 
   // --- authenticated session ---------------------------------------------
-  const conn = await connect('alice', 'secret123');
+  const conn = await connect(ALICE, 'secret123');
   check('ssh handshake + password auth succeeds', true);
 
   const banner = await sendCommand(conn, '');
-  check('banner shows the signed-in account', banner.includes('alice') && banner.includes('todo>'));
+  check('banner shows the signed-in account', banner.includes(ALICE) && banner.includes('todo>'));
 
   const afterAdd = await sendCommand(conn, 'add ssh task --high');
   check('add over ssh works', afterAdd.includes('added:') && afterAdd.includes('ssh task'));
@@ -130,7 +134,7 @@ try {
   check('undo over ssh works', (await sendCommand(conn, 'undo 1')).includes('reopened:'));
   check('edit over ssh works', (await sendCommand(conn, 'edit 1 edited by ssh')).includes('updated:'));
   check('stats over ssh works', (await sendCommand(conn, 'stats')).includes('total:'));
-  check('whoami over ssh works', (await sendCommand(conn, 'whoami')).includes('alice'));
+  check('whoami over ssh works', (await sendCommand(conn, 'whoami')).includes(ALICE));
   check('rm over ssh works', (await sendCommand(conn, 'rm 1')).includes('removed:'));
 
   const empty = await sendCommand(conn, 'list');
@@ -140,7 +144,7 @@ try {
   check('unknown command gets a friendly error', bad.includes('unknown command'));
 
   // --- per-user isolation over ssh ---------------------------------------
-  const bobConn = await connect('bob', 'secret123');
+  const bobConn = await connect(BOB, 'secret123');
   const bobList = await sendCommand(bobConn, 'list');
   check("bob's ssh session is a separate store", bobList.includes('No tasks yet'));
   await sendCommand(bobConn, 'add bob task');

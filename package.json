@@ -26,6 +26,8 @@
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:web": "node scripts/verify-web.mjs",
     "verify:local": "node scripts/smoke-local.mjs",
+    "verify:pg": "node scripts/pg-ping.mjs",
+    "test:pg": "node scripts/run-with-pg.mjs npm run verify",
     "verify": "npm test && npm run test:shared && npm run test:api && npm run test:ssh && npm run verify:auth && npm run verify:web",
     "verify:shared": "npm run test:shared"
   },
@@ -46,5 +48,11 @@
     "chalk": "^6.0.0",
     "express": "^5.2.1",
     "ssh2": "^1.17.0"
+  },
+  "optionalDependencies": {
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "embedded-postgres": "^18.4.0-beta.17"
   }
 }

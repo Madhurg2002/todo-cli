@@ -1,7 +1,8 @@
 import app from './index.js';
 import { NodeSSHServer } from './ssh-helpers.js';
 import { createSession } from './ssh.js';
-import { authenticate } from '@todo/shared/accounts';
+import { authenticate, closeAccountsPool } from '@todo/shared/accounts';
+import { closePgPool } from '@todo/shared/store';
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -21,13 +22,16 @@ const httpServer = app.listen(PORT, HOST, () => {
   ssh.on('connection', (client) => {
     // Authenticate with the same username/password as the web client.
     client.on('authentication', (ctx) => {
-      const user = authenticate(ctx.username, ctx.password);
-      if (user) {
-        client.user = user;
-        ctx.accept();
-        return;
-      }
-      ctx.reject(['password'], false);
+      authenticate(ctx.username, ctx.password)
+        .then((user) => {
+          if (user) {
+            client.user = user;
+            ctx.accept();
+            return;
+          }
+          ctx.reject(['password'], false);
+        })
+        .catch(() => ctx.reject(['password'], false));
     });
 
     client.on('ready', () => {
@@ -53,6 +57,8 @@ const httpServer = app.listen(PORT, HOST, () => {
     console.log(`\n${signal} received — closing servers…`);
     ssh.close(() => {
       httpServer.close(() => {
+        closeAccountsPool();
+        closePgPool();
         console.log('todo: shut down cleanly.');
         process.exit(0);
       });

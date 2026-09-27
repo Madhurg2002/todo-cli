@@ -5,9 +5,8 @@
 # repository, and every field below is pre-filled.
 #
 # Notes:
-# - The disk requires a paid instance (starter). On the free tier there is
-#   no disk, so accounts/tasks would vanish on every spin-down — see
-#   DEPLOY.md for the free-path requirements (Postgres-backed accounts).
+# - The disk requires a paid instance (starter). If you want $0, use
+#   render-free.yaml instead — same service, no disk, Postgres for storage.
 # - The SSH TUI cannot be hosted on Render (no raw TCP ingress). The start
 #   command runs apps/backend/server/start.js: HTTP + API + static web only.
 # - Set PUBLIC_URL when prompted (Render asks for `sync: false` vars).

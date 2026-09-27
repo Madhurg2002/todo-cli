@@ -336,15 +336,39 @@ let pgModule = null;
  */
 async function getPg() {
   if (!pgModule) {
-    try {
-      pgModule = (await import('pg')).default ?? (await import('pg'));
-    } catch (err) {
+    const mod = await import('pg').catch(() => null);
+    if (!mod) {
       throw new StoreError(
         "DATABASE_URL is set but the 'pg' package is not installed — run: npm install pg"
       );
     }
+    pgModule = mod.default?.Pool ? mod.default : mod;
   }
   return pgModule;
+}
+
+let sharedPool = null;
+
+/**
+ * One pool per process for every Postgres consumer (task stores, accounts,
+ * migrations). Avoids the pre-refactor bug of a fresh pool per request.
+ */
+export async function getSharedPgPool() {
+  if (!sharedPool) {
+    const pg = await getPg();
+    sharedPool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+    sharedPool.on('error', () => {}); // idle client errors must not crash the server
+  }
+  return sharedPool;
+}
+
+/** Close the shared pool (used by tests and graceful shutdown). */
+export async function closePgPool() {
+  if (sharedPool) {
+    const pool = sharedPool;
+    sharedPool = null;
+    await pool.end().catch(() => {});
+  }
 }
 
 let schemaReady = null;
@@ -391,7 +415,9 @@ export async function createPostgresStore({ connectionString, userId = null } = 
   const url = connectionString ?? process.env.DATABASE_URL;
   if (!url) throw new StoreError('createPostgresStore needs a DATABASE_URL');
   const pg = await getPg();
-  const db = new pg.Pool({ connectionString: url, max: 5 });
+  const db = connectionString
+    ? new pg.Pool({ connectionString: url, max: 5 })
+    : await getSharedPgPool();
   await ensureSchema(db);
 
   const note = (type, taskId) => emitChange({ userId, type, taskId, at: new Date().toISOString() });
@@ -522,20 +548,53 @@ export async function createPostgresStore({ connectionString, userId = null } = 
 export async function migrateJsonToPostgres({ connectionString } = {}) {
   const url = connectionString ?? process.env.DATABASE_URL;
   if (!url) throw new StoreError('migrateJsonToPostgres needs a DATABASE_URL');
-  const { tasksFileFor } = await import('./accounts.js');
+  const { tasksFileFor, DATA_DIR } = await import('./accounts.js');
 
-  const dataDir = process.env.TODO_DATA_DIR || path.join(process.cwd(), '.data');
+  const dataDir = process.env.TODO_DATA_DIR || DATA_DIR;
   const tasksDir = path.join(dataDir, 'tasks');
   if (!fs.existsSync(tasksDir)) {
-    return { users: 0, tasks: 0 };
+    return { users: 0, tasks: 0, sessions: 0 };
   }
 
   const pg = await getPg();
   const db = new pg.Pool({ connectionString: url, max: 2 });
   try {
     await ensureSchema(db);
+    // The accounts tables share this database; make sure they exist so
+    // users/sessions can be migrated in the same run.
+    const { ensureAccountsSchema } = await import('./accounts.js');
+    await ensureAccountsSchema(db);
+
     let taskCount = 0;
+    let userCount = 0;
+    let sessionCount = 0;
     const files = fs.readdirSync(tasksDir).filter((f) => f.endsWith('.json'));
+
+    // users first (tasks.sessions reference them)
+    if (fs.existsSync(usersJsonPath())) {
+      for (const u of readJson(usersJsonPath(), [])) {
+        await db.query(
+          `INSERT INTO users (id, username, password_hash, created_at)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO UPDATE SET
+             username = EXCLUDED.username, password_hash = EXCLUDED.password_hash`,
+          [u.id, u.username, u.passwordHash, u.createdAt]
+        );
+        userCount += 1;
+      }
+    }
+    if (fs.existsSync(sessionsJsonPath())) {
+      for (const s of readJson(sessionsJsonPath(), [])) {
+        await db.query(
+          `INSERT INTO sessions (token, user_id, created_at, expires_at)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (token) DO UPDATE SET expires_at = EXCLUDED.expires_at`,
+          [s.token, s.userId, s.createdAt, new Date(s.expiresAt)]
+        );
+        sessionCount += 1;
+      }
+    }
+
     for (const file of files) {
       const userId = file.replace(/\.json$/, '');
       const tasks = loadTasks(path.join(tasksDir, file));
@@ -552,10 +611,20 @@ export async function migrateJsonToPostgres({ connectionString } = {}) {
         taskCount += 1;
       }
     }
-    return { users: files.length, tasks: taskCount };
+    return { users: userCount, tasks: taskCount, sessions: sessionCount };
   } finally {
     await db.end();
   }
+}
+
+function usersJsonPath() {
+  const dataDir = process.env.TODO_DATA_DIR || path.join(process.cwd(), '.data');
+  return path.join(dataDir, 'users.json');
+}
+
+function sessionsJsonPath() {
+  const dataDir = process.env.TODO_DATA_DIR || path.join(process.cwd(), '.data');
+  return path.join(dataDir, 'sessions.json');
 }
 
 /**
@@ -576,11 +645,19 @@ function tasksFileFor(userId) {
 }
 
 /**
- * Remove a user's JSON task store (used by account deletion).
- * A no-op when the store is Postgres — rows live in the tasks table
- * keyed by user_id and can be cleaned with SQL.
+ * Remove a user's task data (used by account deletion): the JSON file in
+ * file mode, the Postgres rows when DATABASE_URL selects the PG store.
  */
-export function removeTasksForUser(userId) {
+export async function removeTasksForUser(userId) {
+  if (process.env.DATABASE_URL && process.env.TODO_STORE !== 'file') {
+    try {
+      const pool = await getSharedPgPool();
+      await pool.query('DELETE FROM tasks WHERE user_id = $1', [userId]);
+    } catch {
+      // best effort — account deletion must not fail on a missing table
+    }
+    return;
+  }
   try {
     const file = tasksFileFor(userId);
     if (fs.existsSync(file)) fs.rmSync(file, { force: true });

@@ -1,0 +1,45 @@
+# Render blueprint for todo.sh on the **$0 free tier** — no persistent disk.
+#
+# Free instances have no disk and spin down after ~15 idle minutes, so
+# everything that must survive a restart lives in Postgres. Accounts and
+# sessions were ported to Postgres for exactly this reason: set DATABASE_URL
+# and both the account store and the task store use it.
+#
+# Use it from the Render dashboard: New + Blueprint, point it at this
+# repository. The free plan can't be combined with a disk, which is why this
+# is a separate blueprint from render.yaml (the paid, disk-backed one).
+#
+# Setup order:
+# 1. Create a free Postgres that is not Render's own 30-day trial database —
+#    Neon is the easiest (it has a permanent free tier). Copy its pooled
+#    connection string.
+# 2. Start this blueprint and paste the connection string into DATABASE_URL
+#    when prompted (Render asks for `sync: false` variables).
+# 3. Set PUBLIC_URL to the URL Render assigns. Display-only.
+# 4. Schema is created automatically on first boot — no migration step.
+#
+# Notes:
+# - The SSH TUI cannot be hosted here (no raw TCP ingress). The start command
+#   runs apps/backend/server/start.js: HTTP + API + static web only.
+# - The service sleeps when idle. Add a free uptime monitor (e.g. UptimeRobot
+#   against /api/health every 10 minutes) if you want it always warm. Data is
+#   safe either way — that is the point of Postgres.
+
+services:
+  - type: web
+    name: todo-sh-free
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: node apps/backend/server/start.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: "1" # Render terminates TLS; makes session cookies Secure
+      - key: DATABASE_URL
+        sync: false # paste the Postgres connection string (accounts + tasks)
+      - key: PUBLIC_URL
+        sync: false # fill with https://todo-sh-free.onrender.com

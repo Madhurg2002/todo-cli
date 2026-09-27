@@ -46,6 +46,7 @@ const {
   deleteAccount,
   sessionsForUser,
   revokeSessionById,
+  closeAccountsPool,
   AuthError,
 } = await import('@todo/shared/accounts');
 
@@ -318,16 +319,16 @@ async function accountsFlow() {
     console.error(`✗ createUser validates: ${err.message}`);
   });
 
-  assert.equal(authenticate('carol', 'secret123')?.id, user.id);
-  assert.equal(authenticate('carol', 'wrong'), null);
+  assert.equal((await authenticate('carol', 'secret123'))?.id, user.id);
+  assert.equal(await authenticate('carol', 'wrong'), null);
   console.log('✔ authenticate verifies credentials');
 
   const t1 = await createSession(user.id);
   const t2 = await createSession(user.id);
-  assert.equal(userForSession(t1)?.id, user.id);
-  assert.equal(userForSession(t2)?.id, user.id);
+  assert.equal((await userForSession(t1))?.id, user.id);
+  assert.equal((await userForSession(t2))?.id, user.id);
 
-  const slist = sessionsForUser(user.id, t2);
+  const slist = await sessionsForUser(user.id, t2);
   assert.equal(slist.length, 2);
   assert.ok(slist.find((s) => s.current));
   assert.ok(!slist.find((s) => s.current).id.includes(t2.slice(4, -4)), 'token must not leak into session ids');
@@ -341,11 +342,11 @@ async function accountsFlow() {
   try {
     await assert.rejects(() => changePassword(user.id, 'wrong', 'newsecret9'), (e) => e.status === 403);
     await changePassword(user.id, 'secret123', 'newsecret9');
-    assert.ok(authenticate('carol', 'newsecret9'));
-    assert.equal(authenticate('carol', 'secret123'), null);
+    assert.ok(await authenticate('carol', 'newsecret9'));
+    assert.equal(await authenticate('carol', 'secret123'), null);
     // t1/t2 sessions were revoked (keepToken was null)
-    assert.equal(userForSession(t1), null);
-    assert.equal(userForSession(t2), null);
+    assert.equal(await userForSession(t1), null);
+    assert.equal(await userForSession(t2), null);
     console.log('✔ changePassword verifies current + revokes other sessions');
   } catch (err) {
     failures++;
@@ -362,9 +363,19 @@ async function accountsFlow() {
     await assert.rejects(() => deleteAccount(user.id, 'wrong'), (e) => e.status === 403);
     const res = await deleteAccount(user.id, 'newsecret9');
     assert.equal(res.user.username, 'carol');
-    assert.equal(authenticate('carol', 'newsecret9'), null);
-    assert.equal(userForSession(t1), null);
-    assert.ok(!fs.existsSync(taskFile), 'task file should be gone after deletion');
+    assert.equal(await authenticate('carol', 'newsecret9'), null);
+    assert.equal(await userForSession(t1), null);
+    // task cleanup matches the selected backend: PG rows or the JSON file
+    if (process.env.DATABASE_URL) {
+      const pg = await import('pg');
+      const Pool = pg.default?.Pool ?? pg.Pool;
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM tasks WHERE user_id = $1', [user.id]);
+      await pool.end();
+      assert.equal(rows[0].n, 0, 'postgres task rows should be gone after deletion');
+    } else {
+      assert.ok(!fs.existsSync(taskFile), 'task file should be gone after deletion');
+    }
     console.log('✔ deleteAccount removes user, sessions and tasks');
   } catch (err) {
     failures++;
@@ -374,9 +385,61 @@ async function accountsFlow() {
   await Promise.resolve();
 }
 
+// --- accounts in Postgres mode (skipped without TEST_DATABASE_URL) -----------
+// NOTE: the accounts backend is selected once at module load from
+// DATABASE_URL, so when this file runs under scripts/run-with-pg.mjs the
+// plain accountsFlow() above ALSO exercises the Postgres backend; this
+// section adds Postgres-specific assertions (UNIQUE 409, cascades).
+
+const pgAccountsUrl = process.env.TEST_DATABASE_URL;
+if (!pgAccountsUrl) {
+  console.log('↷ Postgres accounts tests skipped (set TEST_DATABASE_URL to run them)');
+} else {
+  try {
+    const accounts = await import('@todo/shared/accounts');
+
+    const pgUser = await accounts.createUser({ username: 'pgcarol', password: 'secret123' });
+    check('pg accounts: createUser inserts and returns the user', pgUser.username === 'pgcarol');
+    check('pg accounts: duplicate username → 409',
+      await accounts.createUser({ username: 'pgcarol', password: 'secret123' }).then(
+        () => false,
+        (e) => e.status === 409
+      ));
+    check('pg accounts: authenticate verifies',
+      (await accounts.authenticate('pgcarol', 'secret123'))?.id === pgUser.id &&
+      (await accounts.authenticate('pgcarol', 'nope')) === null);
+
+    const s1 = await accounts.createSession(pgUser.id);
+    const s2 = await accounts.createSession(pgUser.id);
+    check('pg accounts: session resolves to user', (await accounts.userForSession(s1))?.id === pgUser.id);
+    const slist = await accounts.sessionsForUser(pgUser.id, s2);
+    check('pg accounts: sessions listed with current marker', slist.length === 2 && slist.find((s) => s.current));
+    check('pg accounts: revoke by public id',
+      (await accounts.revokeSessionById(pgUser.id, slist.find((s) => !s.current).id)) === true);
+    check('pg accounts: revoked session no longer resolves', (await accounts.userForSession(s1)) === null);
+
+    await accounts.changePassword(pgUser.id, 'secret123', 'newsecret9');
+    check('pg accounts: password change revokes other sessions',
+      (await accounts.authenticate('pgcarol', 'newsecret9')) !== null && (await accounts.userForSession(s2)) === null);
+
+    await accounts.deleteAccount(pgUser.id, 'newsecret9');
+    check('pg accounts: deleteAccount removes user + sessions',
+      (await accounts.authenticate('pgcarol', 'newsecret9')) === null &&
+      (await accounts.sessionsForUser(pgUser.id)).length === 0);
+  } catch (err) {
+    failures++;
+    console.error(`✗ pg accounts section: ${err.message}`);
+  } finally {
+    await closeAccountsPool();
+  }
+}
+
 await accountsFlow();
 await Promise.all(pending); // let async checks finish before exiting
 
+await closeAccountsPool();
+const { closePgPool } = await import('@todo/shared/store');
+await closePgPool();
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(failures === 0 ? '\nAll shared-core tests passed.' : `\n${failures} test(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

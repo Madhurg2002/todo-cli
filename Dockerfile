@@ -5,7 +5,8 @@
 #
 # Data lives in /app/.data (accounts, sessions, per-user task files).
 # Mount a volume there to persist across restarts. To use Postgres
-# instead, pass DATABASE_URL and mount nothing.
+# instead, pass DATABASE_URL and mount nothing — accounts, sessions and
+# tasks all move to the database, which is what allows a disk-less host.
 
 FROM node:22-alpine AS deps
 WORKDIR /app

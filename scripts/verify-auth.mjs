@@ -30,29 +30,34 @@ const json = async (p, opts = {}, cookie = '') => {
 };
 
 setTimeout(async () => {
+  // Unique per suite: in Postgres mode every suite shares one database, so a
+  // plain `alice` would already exist by the time this script runs.
+  const ALICE = 'authalice';
+  const BOB = 'authbob';
+
   const reg = await json('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username: 'alice', password: 'secret123' }),
+    body: JSON.stringify({ username: ALICE, password: 'secret123' }),
   });
-  check(`register (${reg.status})`, reg.status === 201 && reg.body.user.username === 'alice');
+  check(`register (${reg.status})`, reg.status === 201 && reg.body.user.username === ALICE);
   const alice = reg.cookie;
 
-  check('me with session', (await json('/api/auth/me', {}, alice)).body.user?.username === 'alice');
+  check('me with session', (await json('/api/auth/me', {}, alice)).body.user?.username === ALICE);
   check('me without session → 401', (await json('/api/auth/me')).status === 401);
   check('tasks without session → 401', (await json('/api/tasks')).status === 401);
 
   const created = await json('/api/tasks', { method: 'POST', body: JSON.stringify({ text: 'alice task', priority: 'high' }) }, alice);
   check(`create (${created.status})`, created.status === 201);
 
-  const reg2 = await json('/api/auth/register', { method: 'POST', body: JSON.stringify({ username: 'bob', password: 'secret123' }) });
+  const reg2 = await json('/api/auth/register', { method: 'POST', body: JSON.stringify({ username: BOB, password: 'secret123' }) });
   const bob = reg2.cookie;
   const bobList = await json('/api/tasks', {}, bob);
   check(`bob sees no alice tasks (count=${bobList.body.count})`, bobList.body.count === 0);
 
-  const badLogin = await json('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'alice', password: 'wrong' }) });
+  const badLogin = await json('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: ALICE, password: 'wrong' }) });
   check('wrong password → 401', badLogin.status === 401);
 
-  const dup = await json('/api/auth/register', { method: 'POST', body: JSON.stringify({ username: 'alice', password: 'secret123' }) });
+  const dup = await json('/api/auth/register', { method: 'POST', body: JSON.stringify({ username: ALICE, password: 'secret123' }) });
   check(`duplicate username → 409 (${dup.status})`, dup.status === 409);
 
   check('stats works', (await json('/api/stats', {}, alice)).body.total === 1);

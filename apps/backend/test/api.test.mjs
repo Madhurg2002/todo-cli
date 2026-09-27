@@ -221,15 +221,19 @@ try {
   check('account deletion works', del.status === 200);
   check('deleted account cannot log in', (await client()('POST', '/api/auth/login', { username: 'alice', password: 'newsecret9' })).status === 401);
 
-  // corrupted store → 500
+  // corrupted store → 500 (file mode only; PG mode has no corruptible file)
   const freshSession = client();
   await freshSession('POST', '/api/auth/login', { username: 'bob', password: 'secret123' });
   const bobId = (await freshSession('GET', '/api/auth/me')).body.user.id;
-  fs.writeFileSync(path.join(dataDir, 'tasks', `${bobId}.json`), '{nope');
-  const corrupted = await freshSession('GET', '/api/tasks');
-  check('corrupted store → 500 with message',
-    corrupted.status === 500 && String(corrupted.body.error).includes('corrupted'),
-    `got ${corrupted.status} ${JSON.stringify(corrupted.body)}`);
+  if (process.env.DATABASE_URL) {
+    check('corrupted store → 500 with message', true, 'skipped: postgres mode has no corruptible file store');
+  } else {
+    fs.writeFileSync(path.join(dataDir, 'tasks', `${bobId}.json`), '{nope');
+    const corrupted = await freshSession('GET', '/api/tasks');
+    check('corrupted store → 500 with message',
+      corrupted.status === 500 && String(corrupted.body.error).includes('corrupted'),
+      `got ${corrupted.status} ${JSON.stringify(corrupted.body)}`);
+  }
 
   // bad filter → 400 (shared validation). bob's store is corrupted by the
   // check above, so use a fresh account for the filter check.

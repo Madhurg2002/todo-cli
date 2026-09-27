@@ -18,8 +18,11 @@ import {
   userForSession,
   changePassword,
   deleteAccount,
+  closeAccountsPool,
+  accountsBackendKind,
   AuthError,
 } from '@todo/shared/accounts';
+import { closePgPool } from '@todo/shared/store';
 import { registerSharedBundle } from './shared-bundle.js';
 import {
   VERSION,
@@ -49,6 +52,12 @@ registerSharedBundle(app);
 
 const SESSION_MAX_AGE = SESSION_TTL_SECONDS;
 const BOOTED_AT = new Date().toISOString();
+
+/** Close DB pools on shutdown so Neon/Render connections drain cleanly. */
+export async function closeDatabasePools() {
+  await closeAccountsPool();
+  await closePgPool();
+}
 
 // --- helpers --------------------------------------------------------------
 
@@ -102,17 +111,16 @@ function tokenFor(req) {
 
 /** Attach req.user (or reply 401). Accepts cookie and Bearer tokens. */
 function requireAuth(req, res, next) {
-  const user = userForSession(tokenFor(req));
-  if (!user) {
-    res.status(401).json({ error: 'sign in required' });
-    return;
-  }
-  req.user = user;
-  next();
-}
-
-function currentUser(req) {
-  return userForSession(tokenFor(req));
+  userForSession(tokenFor(req))
+    .then((user) => {
+      if (!user) {
+        res.status(401).json({ error: 'sign in required' });
+        return;
+      }
+      req.user = user;
+      next();
+    })
+    .catch(next);
 }
 
 /**
@@ -198,7 +206,7 @@ app.post('/api/auth/register', authLimiter, asyncHandler(async (req, res) => {
 }));
 
 app.post('/api/auth/login', authLimiter, asyncHandler(async (req, res) => {
-  const user = authenticate(req.body?.username, req.body?.password);
+  const user = await authenticate(req.body?.username, req.body?.password);
   if (!user) {
     res.status(401).json({ error: 'invalid username or password' });
     return;
@@ -214,19 +222,19 @@ app.post('/api/auth/logout', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-app.get('/api/auth/me', (req, res) => {
-  const user = currentUser(req);
+app.get('/api/auth/me', asyncHandler(async (req, res) => {
+  const user = await userForSession(tokenFor(req));
   if (!user) {
     res.status(401).json({ error: 'not signed in' });
     return;
   }
   res.json({ user });
-});
+}));
 
 /** List the account's live sessions (this device marked `current`). */
-app.get('/api/auth/sessions', requireAuth, (req, res) => {
-  res.json({ sessions: sessionsForUser(req.user.id, tokenFor(req)) });
-});
+app.get('/api/auth/sessions', requireAuth, asyncHandler(async (req, res) => {
+  res.json({ sessions: await sessionsForUser(req.user.id, tokenFor(req)) });
+}));
 
 /** Kill one session by its public id. */
 app.delete('/api/auth/sessions/:id', requireAuth, asyncHandler(async (req, res) => {
@@ -279,6 +287,7 @@ app.get('/api/health', (_req, res) => {
     service: 'todo-api',
     version: VERSION,
     store: storeKind,
+    accounts: accountsBackendKind(),
     uptimeSec: Math.round(process.uptime()),
     bootedAt: BOOTED_AT,
   });

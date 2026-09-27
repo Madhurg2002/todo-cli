@@ -31,22 +31,45 @@ What the blueprint sets up:
 Every push to `master` auto-deploys. The CLI keeps working locally and
 offline exactly as before — hosting only affects the web/REST surface.
 
-## Option 2 — Render free tier ($0, needs code work first)
+## Option 2 — Render free tier ($0, Postgres-backed)
 
 Free instances have **no persistent disk** and **spin down after ~15 idle
-minutes**. Before using it:
+minutes**, so anything on local disk dies with the container. That is why
+accounts and sessions are now stored in Postgres alongside tasks: set
+`DATABASE_URL` and all three move to the database, leaving nothing important
+on the filesystem. The `render-free.yaml` blueprint is exactly Option 1 minus
+the disk.
 
-1. **Port accounts and sessions to Postgres.** Tasks already support
-   `DATABASE_URL`, but accounts/sessions are file-based — on the free tier
-   every spin-down would wipe logins. This is the one blocking refactor.
-2. Create a free Postgres (e.g. Tiger Cloud or Neon — both have no-expiry
-   free tiers, unlike Render's 30-day free database) and set `DATABASE_URL`.
-3. Add a free uptime pinger (e.g. UptimeRobot hitting `/api/health` every
-   10 minutes) to avoid spin-downs and cold starts.
+1. Create a free Postgres with a **permanent** free tier. Render's own free
+   database expires after 30 days; Neon is the usual pick.
+2. In the Render dashboard: **New → Blueprint**, point it at this repository,
+   and switch the blueprint to `render-free.yaml` (or just create the Web
+   Service by hand with the same settings — see the table below).
+3. Paste the connection string into `DATABASE_URL`, and set `PUBLIC_URL` to
+   the URL Render assigns.
+4. Deploy. The `users`, `sessions` and `tasks` tables are created
+   automatically on first boot — there is no migration step.
+5. Open the URL and register. Accounts, logins and tasks survive every
+   spin-down, redeploy and restart.
 
-Then deploy the same service as Option 1 but on the free plan, **without**
-the disk, and with `TODO_STORE` left at its default (Postgres is selected
-automatically when `DATABASE_URL` is set).
+| Setting | Value | Why |
+| --- | --- | --- |
+| Instance | `free` | $0; sleeps when idle |
+| Disk | none | nothing on disk matters — Postgres holds it all |
+| `DATABASE_URL` | your Postgres URL | accounts, sessions **and** tasks |
+| `TODO_STORE` | leave unset | Postgres is selected automatically |
+| `TRUST_PROXY=1` | env | Render terminates TLS → session cookies get `Secure` |
+| Health check | `/api/health` | also reports which store is active |
+
+One honest caveat about the free tier: idle instances sleep, so the first
+request after a quiet period takes a few seconds to wake up. A free uptime
+monitor (e.g. UptimeRobot against `/api/health` every 10 minutes) keeps it
+warm if that bothers you. Data is safe regardless — the sleep is cosmetic.
+
+Already have data in a file store? `npm run migrate:pg` copies
+`users.json`, `sessions.json` and the task files into Postgres in one pass
+(run it once, against the new `DATABASE_URL`, before pointing the service at
+it).
 
 ## Option 3 — VPS / Docker (full feature set, including SSH)
 
@@ -76,9 +99,9 @@ or VPS deployment. The app itself does not need it.
 
 | Var | Set it to | Notes |
 | --- | --- | --- |
-| `TODO_DATA_DIR` | `/var/data` (Render) or `/app/.data` (Docker) | where accounts/sessions/tasks live |
+| `TODO_DATA_DIR` | `/var/data` (Render disk) or `/app/.data` (Docker) | file store only; ignored in Postgres mode |
 | `TRUST_PROXY` | `1` | behind Render/VPS TLS proxy; enables `Secure` cookies |
 | `PUBLIC_URL` | your public URL | display-only (boot log) |
-| `DATABASE_URL` | Postgres connection string | optional; switches the task store to Postgres |
+| `DATABASE_URL` | Postgres connection string | optional; switches **tasks, accounts and sessions** to Postgres |
 | `TODO_STORE` | `file` | optional; forces the file store even with `DATABASE_URL` |
 | `RATE_LIMIT` | unset | leave off in prod (limits: auth 10/min, writes 120/min per IP) |
