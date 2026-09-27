@@ -491,6 +491,12 @@ app.use((err, _req, res, _next) => {
 // --- static frontend (if built) --------------------------------------------
 
 const webDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
-app.use(express.static(webDist));
+app.use(
+  express.static(webDist, {
+    // Always revalidate so frontend updates reach users without manual
+    // hard refreshes (ETag/304 keeps it cheap when nothing changed).
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+  })
+);
 
 export default app;

@@ -29,7 +29,7 @@
       <p class="cta">Sign in to try it →</p>
     </section>
 
-    <form class="auth-card" id="auth-form" autocomplete="off">
+    <form class="auth-card" id="auth-form" autocomplete="off" novalidate>
       <h1>todo<span>.sh</span></h1>
       <p class="auth-sub">sign in to your terminal</p>
 
@@ -123,7 +123,7 @@
 
       <section>
         <h3>change password</h3>
-        <form id="pw-form">
+        <form id="pw-form" novalidate>
           <input id="pw-current" type="password" placeholder="current password" required />
           <input id="pw-new" type="password" placeholder="new password (8+ chars)" minlength="8" required />
           <button type="submit">update password</button>
@@ -140,7 +140,7 @@
       <section class="danger">
         <h3>danger zone</h3>
         <p>Deleting your account removes your tasks permanently. Every session is signed out.</p>
-        <form id="del-form">
+        <form id="del-form" novalidate>
           <input id="del-pass" type="password" placeholder="confirm with your password" required />
           <button type="submit" class="danger-btn">delete my account</button>
           <p class="form-msg" id="del-msg"></p>

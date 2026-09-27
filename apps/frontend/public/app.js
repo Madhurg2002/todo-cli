@@ -593,7 +593,12 @@ function showApp(user) {
   ping();
 }
 
-authSwitch.addEventListener('click', (e) => {
+// Sign-in / register toggle. The link inside #auth-alt is re-rendered
+// on each switch, so listen on the container (delegation) instead of
+// re-attaching to the new element every click.
+authAlt.addEventListener('click', (e) => {
+  const link = e.target.closest('#auth-switch');
+  if (!link) return;
   e.preventDefault();
   mode = mode === 'login' ? 'register' : 'login';
   authSubmit.textContent = mode === 'login' ? 'sign in' : 'create account';
@@ -602,7 +607,6 @@ authSwitch.addEventListener('click', (e) => {
       ? 'no account? <a href="#" id="auth-switch">create one</a>'
       : 'have an account? <a href="#" id="auth-switch">sign in</a>';
   authErr.hidden = true;
-  $('auth-switch').addEventListener('click', authSwitch.onclick);
 });
 
 authForm.addEventListener('submit', async (e) => {
